@@ -1,0 +1,7 @@
+# build output
+*.o
+*.a
+src/obj/
+hunspell/obj/
+/ScoopStar.exe
+/ScoopStar-new.exe

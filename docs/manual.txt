@@ -1,0 +1,160 @@
+SCOOPSTAR 7.0
+A WordStar 7.0 for DOS work-alike for Windows 10/11 (Scoop Suite)
+==================================================================
+
+RUNNING IT
+  Double-click ScoopStar.exe. Nothing to install; it is one 64-bit program.
+  You can also give it a file:   ScoopStar.exe LETTER.RTF
+                                 ScoopStar.exe /N AUTOEXEC.BAT   (nondocument)
+  Settings are kept in %APPDATA%\ScoopStar\ScoopStar.ini.
+  Alt+Enter toggles full screen. The screen font is TrueType (Consolas)
+  by default; Utilities > Screen Settings also offers the VGA bitmap look. Drag the window edges to make it bigger;
+  the text grid scales to fit.
+
+DOCUMENT FORMAT
+  Documents are saved as Rich Text Format (.RTF). Word, LibreOffice and
+  WordPad open them directly with bold, italic, underline, fonts, margins,
+  alignment, line spacing, headers, footers, page numbers and page breaks.
+  RTF was chosen over ODT because it is plain text (no zip/XML packaging),
+  so it is far simpler and more robust to read and write.
+
+  ScoopStar also tucks a private copy of your text, tags and dot commands
+  inside the RTF, so a document reopens in ScoopStar exactly as you left it.
+  If the file was later edited and saved in Word, that copy is gone and
+  ScoopStar converts the Word formatting back into tags and dot commands.
+
+  Nondocuments (N at the Opening screen) are plain text files: no word wrap,
+  saved in the encoding they came in (UTF-8, ANSI or UTF-16).
+
+  Old DOS WordStar files (.WS, .DOC etc.) open and are converted: bold,
+  underline, italic, strikeout, super/subscript, soft returns and dot
+  commands come across. Saving writes a new .RTF beside the original; the
+  DOS file is never overwritten.
+
+  .TXT files opened as documents save back as plain text (you are warned if
+  that would lose formatting). Use File > Save As with an .RTF name to keep
+  formatting. Word .DOC/.DOCX and .ODT files must first be saved as RTF.
+
+WHAT WORKS LIKE WORDSTAR 7
+  * Opening screen with directory listing, classic one-letter commands
+    (D S N P O Y E L F R X ?) and File/Utilities/Additional/Help menus.
+  * Editing screen: title bar, pull-down menu bar, style bar (with clickable
+    B I U <*> L C R J buttons), ruler line, flag column (< P ^ : .),
+    scroll bar and status line (Insert, P, L, V", C, H").
+  * Classic commands: ^E ^X ^S ^D ^A ^F ^R ^C ^W ^Z ^G ^H ^T ^Y ^V ^N ^B
+    ^U ^L, and the ^K ^Q ^O ^P ^M prefixes. Pause after a prefix and the
+    classic menu for it pops up. Pull-down menus show the classic keys.
+  * Blocks: ^KB ^KK ^KH ^KC ^KV ^KY ^KW ^KR ^KU, case ^K" ^K' ^K., word
+    count ^K?, block math ^KM, sort ^KZ, markers ^K0-9 / ^Q0-9, Windows
+    Clipboard ^K] ^K[ (also Ctrl+Ins / Shift+Ins). Mouse drag and
+    Shift+arrows also mark blocks.
+  * Print controls as command tags: ^PB ^PY ^PS ^PX ^PT ^PV ^PD, fonts ^P=,
+    binding space ^PO, extended characters ^P0 (Latin, Greek incl.
+    polytonic, Hebrew, symbols, box drawing, or any hex code).
+    ^OD (or Shift+F1, or <*>) shows/hides the tags and the dot command
+    lines, as in WordStar 7 (Screen Settings can keep dot commands shown).
+  * Dot commands: .lm .rm .pm .oj .oc .ls .tb .aw .pa .cp .pl .mt .mb .hm
+    .fm .po .he .fo .pn .op .pg .. (see Help > Dot Commands).
+  * Layout: ^OL ^OR ^OI ruler, ^OC center, ^O] right align, ^OS alignment
+    and spacing, ^OJ justify, ^OY page layout, ^O# page numbering,
+    headers/footers, ^OF paragraph styles (Title, Heading 1-3, hanging
+    indents, indented quote, etc.).
+  * Find ^QF, Find and Replace ^QA (whole words, ignore case, backward,
+    entire document, without asking), ^L repeat, ^QG/^QH go to character,
+    ^QI go to page, ^QP previous position.
+  * Two windows (^OK), window size (^OM), copy/move between windows
+    (^KA/^KG).
+  * Undo (^U / F2), calculator (^QM), insert date/time/math results (^M).
+  * Print (^KP) to any Windows printer and graphical Page Preview (^OP).
+  * File operations from inside the editor: ^KO ^KJ ^KE ^KL ^KF.
+  * Function keys: F1 help, F2 undo, F3 underline, F4 bold, F5 delete line,
+    F6 delete word, F7 align paragraph, F9 save, F10 save & close.
+
+SPELLING AND THESAURUS
+  ^QL checks from the cursor to the end; Utilities > Spelling Check Global
+  checks the whole document; ^QN checks the word at the cursor; ^QO checks
+  a word you type. In the check box: Enter replaces with the highlighted
+  suggestion (or what you type in "Replace with"), 1-9 picks a suggestion,
+  I ignores once, B bypasses the word for the rest of the session, A adds
+  it to your dictionary, Esc stops.
+  * English uses the spelling checker built into Windows (words you add go
+    into Windows' own custom dictionary). If it is unavailable, ScoopStar
+    falls back to the Hunspell en_US dictionary.
+  * Latin and German use Hunspell dictionaries in the Dictionaries folder
+    (Karl Zeiler's Latin dictionary and the "frami" German dictionary).
+    Words you add are kept in %APPDATA%\ScoopStar\personal_la.dic and
+    personal_de_DE.dic (plain text, one word per line).
+  * The Latin dictionary uses classical spelling, so ScoopStar also
+    accepts j for i (justificatio) and the ae/oe ligatures.
+  * Change language with a dot command: .la la, .la de, .la en (or
+    Utilities > Language Change, which can also set the default).
+  * Greek and Hebrew words, words containing digits, and words in ALL
+    CAPITALS are skipped.
+  ^QJ opens the thesaurus for the word at the cursor (the English
+  thesaurus from LibreOffice, based on Princeton's WordNet). Meanings are
+  on the left, synonyms on the right; Enter replaces the word, L looks up
+  the highlighted synonym, Backspace goes back, W looks up another word.
+  Inflected words are looked up by their stem (jumped -> jump).
+
+  The Dictionaries folder must stay next to ScoopStar.exe.
+
+FOOTNOTES
+  ^ONF (Insert > Note > Footnote) puts a footnote reference at the cursor
+  and opens a footnote window at the bottom of the screen. Type the note
+  there (bold, italic, spelling check and the other editing commands all
+  work), then press F10 or ^KD to return to the document.
+  * ^OND (Edit > Edit Note) edits the footnote at or after the cursor;
+    ^ONG goes to the next footnote; ^KQ in the footnote window discards
+    changes to that note.
+  * References show as superscript numbers and renumber themselves. Delete
+    a reference like any character to remove the footnote. Copying a block
+    copies its footnotes too. .f# n restarts numbering at n.
+  * Footnotes print (and preview) at the foot of the page where they are
+    referenced, below a short rule, in 10-point type; page breaks leave
+    room for them.
+  * They are saved as real RTF footnotes, so Word and LibreOffice show
+    them as footnotes, and footnotes in RTF files from Word or LibreOffice
+    open as ScoopStar footnotes. Endnotes are not supported.
+
+DOCUMENT DEFAULTS
+  Utilities > Document Defaults (on the Opening screen and in the editor)
+  sets the page layout used for new documents and for any document without
+  its own dot commands. Shipped defaults: left margin column 1, right margin
+  column 65 (6.5" of text), top margin 1.00", bottom margin 1.33", page
+  offset 1.00", single spacing, full justification.
+
+DIFFERENCES FROM WORDSTAR 7
+  * Not included: macros, endnotes, merge printing,
+    MailList/TelMerge/Star Exchange, Inset graphics, fax, index/TOC,
+    newspaper columns, column blocks, annotations, outlining,
+    hyphenation. These menu items say "not available".
+  * Paragraphs are always kept aligned as you type (WordStar's Auto Align
+    on); ^B simply moves to the next paragraph.
+  * ^U is a true multi-level undo rather than "undelete".
+  * Home/End go to the start/end of the line (^QE/^QX still go to the top
+    and bottom of the screen).
+  * Hebrew displays left-to-right on the editing screen (it prints and
+    exports correctly); vowel points show in their own cells.
+  * Ctrl+V is WordStar's insert toggle, not Paste. Use ^K[ or Shift+Ins.
+
+BUILDING FROM SOURCE
+  The source is in the "source" folder (C, Win32 API) with Hunspell
+  (C++, LGPL) in source\hunspell. build.sh builds everything with
+  MinGW-w64: Hunspell into libhunspell.a, the C files, then a static link
+  with -lgdi32 -luser32 -lcomdlg32 -lshell32 -lole32 -luuid.
+
+  screen.c  window, text-mode rendering, keyboard/mouse, settings, WinMain
+  doc.c     paragraphs, tags, dot commands, word wrap, pagination, undo
+  edit.c    editing screen and all editing commands
+  menus.c   pull-down menus and classic ^K ^Q ^O ^P ^M menus
+  ui.c      dialogs, file selector, help, Opening screen, calculator
+  fileio.c  RTF writer/reader, text files, WordStar import
+  print.c   printing and Page Preview
+  spell.c   spelling engines (Windows + Hunspell) and thesaurus data
+  font8x16.h  screen font, from GNU Unifont (SIL Open Font License 1.1)
+
+  Dictionary licences are in the Dictionaries folder (en_US: SCOWL/BSD-
+  style; thesaurus: WordNet licence; Latin: GPL; German: GPL/OASIS).
+
+WordStar is a trademark of its owners. ScoopStar is an independent
+program and is not affiliated with them.

@@ -1,0 +1,100 @@
+SCOOPSTAR 7.0 - NEW BUILD (ScoopStar-new.exe)
+==============================================
+
+This build adds the features below. ScoopStar.exe (the earlier, tested
+version) and its "source" folder are unchanged. The new source code is in
+"source-new". Both programs share the same settings and dictionaries.
+
+
+NOTES
+  ^ONF  footnote        printed at the foot of the page, numbered 1, 2, 3
+  ^ONE  endnote         numbered separately and printed on "Notes" pages
+                        after the last page of the document
+  ^ONA  annotation      you choose the mark (a, *, a word); printed at the
+                        foot of the page with that mark
+  ^ONC  comment         nonprinting
+  ^OND  edit the note at or after the cursor   ^ONG  go to the next note
+  .f# n / .e# n   restart footnote / endnote numbering at n
+  In RTF, endnotes are saved as Word endnotes and annotations as footnotes
+  with a custom mark. LibreOffice ignores the custom mark and numbers an
+  annotation like an ordinary footnote; ScoopStar itself keeps the mark.
+  With dot commands hidden, typing a period at the start of a line shows
+  them again so you can see the dot command you are typing.
+
+NEWSPAPER-STYLE COLUMNS
+  ^OU (Layout > Columns) asks for the number of columns and the space
+  between them and writes ".co n,gap".  ".co 1" returns to one column.
+  Text snakes from column to column on the printed page and in Preview.
+  The screen shows the text at one column's width; a dotted "column break"
+  line marks where a new column starts. Changing the number of columns
+  starts a new page. ".cb" (Layout > Column Break) ends a column early.
+
+COLUMN BLOCKS
+  ^KN   column block mode on/off. ^KB and ^KK then mark opposite corners
+        of a rectangle. ^KC copy, ^KV move, ^KY delete, ^K] copy to the
+        Windows Clipboard all work on the rectangle.
+  ^KI   column replace mode (with ^KN on): a copied or moved column
+        writes over the text at the cursor instead of pushing it right.
+  Column blocks work best on lines ending in hard returns (tables, lists).
+
+PROTECT / UNPROTECT
+  File > Protect/Unprotect in the editor, or C at the Opening screen.
+  This sets the Windows read-only attribute. A protected file opens with
+  [PROTECTED] in the title and cannot be changed until it is unprotected.
+
+HYPHENATION
+  ^OE   soft hyphen: invisible unless the word breaks there at a line end
+  ^OH   automatic hyphenation on/off from the cursor on (writes .hy on/off)
+        Uses the LibreOffice patterns in Dictionaries\hyph_en_US.dic and
+        hyph_de_DE.dic, following the .la language. There are no Latin
+        patterns, so Latin text is not hyphenated automatically.
+
+CENTER TEXT VERTICALLY
+  ^OV   writes ".vc" at the cursor; the text of that page is centered
+        between the top and bottom margins. Put it at the top of the page
+        (a title page, for example).
+
+PARAGRAPH NUMBERING
+  ^OZ   inserts a paragraph number at a level (1-8). Numbers are counted
+        automatically and renumber as you edit.
+  Layout > Paragraph Numbering Style:  compound  1.  1.1.  1.1.1.
+                                       outline   I.  A.  1.  a.  (1)  (a)
+  ".p# n" restarts level-1 numbering at n.
+
+GRAPHICS
+  ^P* (Insert > Graphic) picks a picture (PNG, JPEG, BMP, GIF, TIFF) and
+  asks for its width in inches; the height keeps the proportions. It
+  writes ".gr width height file". The screen shows a box with the file
+  name; Preview and printing show the picture. PNG and JPEG pictures are
+  embedded in the RTF file so Word and LibreOffice show them too.
+
+HELP LEVELS  (Help > Change Help Level, or J at the Opening screen)
+  4  pull-down menu bar (as before)
+  3  classic WordStar Edit Menu at the top of the screen; command menus
+     pop up after ^K ^Q ^O ^P ^M
+  2  no menu bar; command menus pop up after the delay
+  1  no menus; commands still work
+  0  like 1, and the style bar is hidden
+  Alt + a letter still opens the pull-down menus at every level.
+
+HEADERS AND FOOTERS
+  .h1 to .h5 and .f1 to .f5 give up to five header and footer lines.
+  Add e or o for even or odd pages only:  .h1e  .h1o  .f1e  .f1o
+  Layout > Headers/Footers > Even/Odd and Multiline writes these for you.
+  In RTF they become Word's left/right (facing pages) headers.
+
+INDEX AND TABLE OF CONTENTS
+  Index entries:   ^PK before and after a word or phrase in the text, or
+                   ".ix entry" lines (".ix Luther;Small Catechism" makes a
+                   subentry). Insert > Index/Contents Entry writes them.
+  Contents:        paragraphs in the Heading 1-3 styles, and ".tc text #2"
+                   lines (#2, #3 give the level).
+  Utilities > Generate Index / Generate Table of Contents (I and T at the
+  Opening screen) writes "<name> Index.rtf" or "<name> Contents.rtf"
+  beside the document, with page numbers as printed, and offers to open
+  it in a second window.
+
+REMOVED
+  Items that did nothing are gone: Macros, the Additional menu (MailList,
+  TelMerge, Star Exchange), Auto Align, and the unused ^O commands. Every
+  remaining menu item and classic command works.

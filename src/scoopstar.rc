@@ -1,0 +1,26 @@
+#include <winver.h>
+1 ICON "scoopstar.ico"
+1 24 "scoopstar.manifest"
+VS_VERSION_INFO VERSIONINFO
+FILEVERSION 7,0,0,0
+PRODUCTVERSION 7,0,0,0
+FILEOS VOS_NT_WINDOWS32
+FILETYPE VFT_APP
+BEGIN
+  BLOCK "StringFileInfo"
+  BEGIN
+    BLOCK "040904B0"
+    BEGIN
+      VALUE "CompanyName", "Scoop Suite"
+      VALUE "FileDescription", "ScoopStar 7.0 word processor"
+      VALUE "FileVersion", "7.0"
+      VALUE "ProductName", "ScoopStar"
+      VALUE "ProductVersion", "7.0"
+      VALUE "OriginalFilename", "ScoopStar.exe"
+    END
+  END
+  BLOCK "VarFileInfo"
+  BEGIN
+    VALUE "Translation", 0x409, 1200
+  END
+END

@@ -1,0 +1,82 @@
+/* ScoopStar 7.0 - command identifiers shared by menus, classic keys and the editor */
+#ifndef CMDS_H
+#define CMDS_H
+
+enum {
+    CMD_NONE = 0,
+    /* cursor */
+    CMD_UP, CMD_DOWN, CMD_LEFT, CMD_RIGHT, CMD_WORDL, CMD_WORDR,
+    CMD_PGUP, CMD_PGDN, CMD_SCRUP, CMD_SCRDN,
+    CMD_LINEBEG, CMD_LINEEND, CMD_SCRTOP, CMD_SCRBOT, CMD_DOCBEG, CMD_DOCEND,
+    CMD_PARAEND, CMD_PREVPOS, CMD_BLOCKBEG, CMD_BLOCKEND, CMD_LASTFIND,
+    CMD_GOTOPAGE, CMD_GOTOCHAR, CMD_GOTOCHARBACK, CMD_GOTOMARK, CMD_SETMARK,
+    CMD_GOTOFONT, CMD_GOTOSTYLE, CMD_SCROLLUPC, CMD_SCROLLDNC,
+    /* editing */
+    CMD_BS, CMD_DEL, CMD_DELWORD, CMD_DELLINE, CMD_DELEOL, CMD_DELBOL, CMD_DELTOCHAR,
+    CMD_ENTER, CMD_SPLIT, CMD_TAB, CMD_INSERT, CMD_UNDO, CMD_REFORMAT, CMD_REFORMATREST,
+    CMD_REPAINT, CMD_HARD2SOFT,
+    /* blocks */
+    CMD_BB, CMD_BK, CMD_BHIDE, CMD_BCOPY, CMD_BMOVE, CMD_BDEL, CMD_BWRITE, CMD_BREAD,
+    CMD_BCOPYWIN, CMD_BMOVEWIN, CMD_CLIPTO, CMD_CLIPFROM, CMD_BPREV, CMD_COLBLOCK, CMD_COLREPLACE,
+    CMD_UPPER, CMD_LOWER, CMD_SENTENCE, CMD_WORDCOUNT, CMD_BLOCKMATH, CMD_SORT,
+    /* files */
+    CMD_SAVE, CMD_SAVEAS, CMD_SAVECLOSE, CMD_SAVEEXIT, CMD_ABANDON, CMD_PRINT, CMD_OPENSWITCH,
+    CMD_FCOPY, CMD_FDELETE, CMD_FRENAME, CMD_CHDIR, CMD_RUNDOS, CMD_STATUS, CMD_EXIT, CMD_EXPORTTXT,
+    /* find */
+    CMD_FIND, CMD_REPLACE, CMD_FINDNEXT,
+    /* view */
+    CMD_PREVIEW, CMD_TAGS, CMD_WINSIZE, CMD_SCREENSET,
+    /* insert */
+    CMD_PAGEBREAK, CMD_DATE, CMD_TIME, CMD_MATHRES, CMD_MATHEXPR, CMD_MATHDOLLAR,
+    CMD_FILENAME, CMD_DRIVE, CMD_DIRECTORY, CMD_PATH, CMD_EXTCHAR, CMD_COMMENT, CMD_BINDSPACE,
+    CMD_CONDBREAK,
+    /* style */
+    CMD_BOLD, CMD_ITALIC, CMD_UNDER, CMD_STRIKE, CMD_SUB, CMD_SUPER, CMD_DOUBLE, CMD_FONT,
+    CMD_PSTYLE, CMD_PSTYLEPREV,
+    /* layout */
+    CMD_CENTER, CMD_RIGHTALIGN, CMD_RULER, CMD_LMARGIN, CMD_RMARGIN, CMD_PAGELAYOUT,
+    CMD_HEADER, CMD_FOOTER, CMD_PAGENUM, CMD_ALIGNSPACE, CMD_JUSTIFY, CMD_WORDWRAP, CMD_AUTOALIGN,
+    CMD_LINESPACE, CMD_COLUMNS,
+    /* utilities */
+    CMD_SPELL, CMD_THESAURUS, CMD_CALC, CMD_MACROS,
+    CMD_SPELLREST, CMD_SPELLWORD, CMD_SPELLTYPE, CMD_LANGUAGE, CMD_DOCDEFAULTS,
+    CMD_FOOTNOTE, CMD_EDITNOTE, CMD_GOTONOTE, CMD_NOTEPREFIX,
+    CMD_ENDNOTE, CMD_ANNOT, CMD_COLBREAK, CMD_PROTECT, CMD_SOFTHYPH, CMD_AUTOHYPH, CMD_VCENTER,
+    CMD_PARANUM, CMD_PNUMSTYLE, CMD_GRAPHIC, CMD_HELPLEVEL, CMD_INDEXMARK, CMD_INDEXENTRY, CMD_TOCENTRY,
+    CMD_GENINDEX, CMD_GENTOC, CMD_EVENODD,
+    /* help */
+    CMD_HELP, CMD_KEYS, CMD_DOTHELP, CMD_ABOUT,
+    /* style bar */
+    CMD_ALIGN_L, CMD_ALIGN_C, CMD_ALIGN_R, CMD_ALIGN_J,
+    CMD_NOTAVAIL,
+    CMD_MAX
+};
+
+/* marker number for CMD_GOTOMARK / CMD_SETMARK is passed in g_cmdarg */
+extern int g_cmdarg;
+
+/* menu definitions */
+typedef struct MItem {
+    const wchar_t *label;   /* NULL = separator; '&' marks hotkey */
+    const wchar_t *key;     /* classic key shown at right */
+    int cmd, arg;
+    const struct MItem *sub; int nsub;
+} MItem;
+typedef struct { const wchar_t *label; const MItem *items; int n; int col; } TopMenu;
+
+extern const TopMenu g_editmenus[]; extern const int g_neditmenus;
+extern const TopMenu g_openmenus[]; extern const int g_nopenmenus;
+
+int  pulldown(const TopMenu *menus, int n, int start, int *arg);   /* returns cmd */
+void draw_menubar(const TopMenu *menus, int n, int sel);
+int  classic_prefix(int prefix, int *arg);   /* ^K ^Q ^O ^P ^M ; returns cmd */
+int  menubar_hit(const TopMenu *menus, int n, int col);
+
+/* opening-screen commands */
+enum {
+    OCMD_NEW = 500, OCMD_OPENDOC, OCMD_OPENNON, OCMD_PRINT, OCMD_COPY, OCMD_DELETE, OCMD_RENAME,
+    OCMD_CHDIR, OCMD_FILESPEC, OCMD_RUNDOS, OCMD_STATUS, OCMD_EXIT, OCMD_TOGGLEDIR, OCMD_SETTINGS, OCMD_DOCDEFAULTS,
+    OCMD_PROTECT, OCMD_GENINDEX, OCMD_GENTOC, OCMD_HELPLEVEL
+};
+
+#endif
