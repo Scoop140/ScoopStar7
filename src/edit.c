@@ -206,7 +206,7 @@ static void draw_stylebar(void)
     Line *l = cur_line(w);
     Fmt f = doc_fmt_at(d, w->cur.p);
     char al = l->align ? l->align : 'L';
-    wchar_t ls[4]; swprintf(ls, 4, L"%c%d", 0x2195, f.ls);
+    wchar_t ls[12], lt[8]; ls_text(f.ls, lt); swprintf(ls, 12, L"%c%ls", 0x2195, lt);
     struct { const wchar_t *t; int on; } b[9] = {
         { L" B ", fx & FX_BOLD }, { L" I ", fx & FX_ITALIC }, { L" U ", fx & FX_UNDER }, { L"<*>", S.show_tags },
         { L" L ", al == 'L' }, { L" C ", al == 'C' }, { L" R ", al == 'R' }, { L" J ", al == 'J' }, { ls, 0 } };
@@ -433,7 +433,7 @@ static void draw_status(void)
     else {
         Fmt f = d->base;
         int pg = l->page + (f.pn > 0 ? f.pn - 1 : 0);
-        double v = (f.mt + l->pline - 1) / 6.0, hh = (col - 1) / 10.0;
+        double v = (f.mt + l->y2 / 2.0) / 6.0, hh = (col - 1) / 10.0;
         swprintf(s, 128, L"%-6ls  P%d  L%d  V%.2f\"  C%d  H%.2f\"", g_insert ? L"Insert" : L"", pg, l->pline, v, col, hh);
     }
     int n = (int)wcslen(s);
@@ -1163,22 +1163,22 @@ static void align_dialog(EdWin *w)
     Doc *d = w->doc;
     Fmt f = doc_fmt_at(d, w->cur.p);
     int al = f.align == 'C' ? 1 : f.align == 'R' ? 2 : f.align == 'J' ? 3 : 0;
-    wchar_t ls[8]; swprintf(ls, 8, L"%d", f.ls);
+    wchar_t ls[8]; ls_text(f.ls, ls);
     DCtl c[] = {
         { DC_LABEL, 2, 3, 20, 1, L"Alignment:" },
         { DC_RADIO, 3, 5, 20, 1, L"Flush &left", NULL, 0, &al, 0 },
         { DC_RADIO, 4, 5, 20, 1, L"&Centered", NULL, 0, &al, 1 },
         { DC_RADIO, 5, 5, 20, 1, L"Flush &right", NULL, 0, &al, 2 },
         { DC_RADIO, 6, 5, 20, 1, L"&Justified", NULL, 0, &al, 3 },
-        { DC_EDIT, 8, 3, 4, 1, L"Line &spacing (1-9):", ls, 8, NULL, 0, NULL, 0, 0, 0, 24 },
+        { DC_EDIT, 8, 3, 5, 1, L"Line &spacing (1, 1.5 ... 9):", ls, 8, NULL, 0, NULL, 0, 0, 0, 31 },
         { DC_BUTTON, 2, 40, 10, 1, L"OK", NULL, 0, NULL, 0, NULL, 0, 0, 1 },
         { DC_BUTTON, 4, 40, 10, 1, L"Cancel", NULL, 0, NULL, 0, NULL, 0, 0, 2 },
     };
     if (dialog_run(L"Alignment and Spacing", 5, 12, 11, 56, c, 8, 1) != 1) return;
     char na = "LCRJ"[al];
     if (na != f.align) set_dot(w, L"oj", na == 'L' ? L"off" : na == 'J' ? L"on" : na == 'C' ? L"c" : L"r");
-    int v = _wtoi(ls);
-    if (v >= 1 && v <= 9 && v != f.ls) set_dot(w, L"ls", ls);
+    int v = ls_parse(ls);
+    if (v && v != f.ls) { wchar_t t[8]; ls_text(v, t); set_dot(w, L"ls", t); }
 }
 
 static void fmt_inches(int v, int perinch, wchar_t *out)

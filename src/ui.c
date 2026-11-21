@@ -802,7 +802,7 @@ int doc_defaults_dialog(void)
     wchar_t lm[16], rm[16], mt[16], mb[16], po[16], ls[8];
     swprintf(lm, 16, L"%d", S.lm); swprintf(rm, 16, L"%d", S.rm);
     swprintf(mt, 16, L"%.2f\"", S.def_mt / 6.0); swprintf(mb, 16, L"%.2f\"", S.def_mb / 6.0);
-    swprintf(po, 16, L"%.2f\"", S.def_po / 10.0); swprintf(ls, 8, L"%d", S.def_ls);
+    swprintf(po, 16, L"%.2f\"", S.def_po / 10.0); ls_text(S.def_ls, ls);
     int al = S.def_align == 'C' ? 1 : S.def_align == 'R' ? 2 : S.def_align == 'J' ? 3 : 0;
     DCtl c[] = {
         { DC_EDIT, 2, 3, 9, 1, L"&Left margin (column):", lm, 16, NULL, 0, NULL, 0, 0, 0, 26 },
@@ -810,7 +810,7 @@ int doc_defaults_dialog(void)
         { DC_EDIT, 4, 3, 9, 1, L"&Top margin:", mt, 16, NULL, 0, NULL, 0, 0, 0, 26 },
         { DC_EDIT, 5, 3, 9, 1, L"&Bottom margin:", mb, 16, NULL, 0, NULL, 0, 0, 0, 26 },
         { DC_EDIT, 6, 3, 9, 1, L"Page &offset (left edge):", po, 16, NULL, 0, NULL, 0, 0, 0, 26 },
-        { DC_EDIT, 7, 3, 4, 1, L"Line &spacing (1-9):", ls, 8, NULL, 0, NULL, 0, 0, 0, 26 },
+        { DC_EDIT, 7, 3, 5, 1, L"Line &spacing (1-9):", ls, 8, NULL, 0, NULL, 0, 0, 0, 26 },
         { DC_LABEL, 9, 3, 20, 1, L"Alignment:" },
         { DC_RADIO, 10, 5, 18, 1, L"Flush l&eft", NULL, 0, &al, 0 },
         { DC_RADIO, 11, 5, 18, 1, L"&Centered", NULL, 0, &al, 1 },
@@ -829,7 +829,7 @@ int doc_defaults_dialog(void)
     if (parse_measure(mt, 0, &v) && v >= 1 && v < 40) S.def_mt = v;
     if (parse_measure(mb, 0, &v) && v >= 1 && v < 40) S.def_mb = v;
     if (parse_measure(po, 1, &v) && v >= 0 && v < 60) S.def_po = v;
-    v = _wtoi(ls); if (v >= 1 && v <= 9) S.def_ls = v;
+    v = ls_parse(ls); if (v) S.def_ls = v;
     S.def_align = "LCRJ"[al];
     settings_save();
     return 1;
@@ -998,7 +998,7 @@ L"  .pm n     paragraph margin (first-line indent)\n"
 L"  .oj on    justify both margins     .oj off  flush left\n"
 L"  .oj c     center                   .oj r    flush right\n"
 L"  .oc on    center lines             .oc off\n"
-L"  .ls n     line spacing (1-9)\n"
+L"  .ls n     line spacing 1 to 9, in steps of 0.5 (.ls 1.5, .ls 2)\n"
 L"  .tb list  tab stops, e.g. .tb 6,11,21\n"
 L"  .aw off   word wrap off (lines kept as typed)   .aw on\n"
 L"  .pa       page break\n"

@@ -17,7 +17,8 @@ features, and tested each version.
 
 - Classic WordStar editing: control-key commands with pop-up command menus,
   blocks and column blocks, markers, find and replace, undo, two windows
-- Dot commands for margins, tabs, line spacing, page length, headers, footers
+- Dot commands for margins, first-line indent, tabs, line spacing (1 to 9 in
+  half steps, so `.ls 1.5` works), page length, headers, footers
   and page numbering, with up to five header and footer lines and separate
   even-page and odd-page versions
 - Bold, italic, underline, strikeout, superscript, subscript and any TrueType

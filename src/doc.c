@@ -276,7 +276,7 @@ void fmt_default(Fmt *f)
 {
     memset(f, 0, sizeof(*f));
     f->lm = S.lm ? S.lm : 1; f->rm = S.rm ? S.rm : 65; f->pm = S.pm ? S.pm : f->lm;
-    f->align = S.def_align ? S.def_align : 'L'; f->ls = (char)(S.def_ls > 0 ? S.def_ls : 1);
+    f->align = S.def_align ? S.def_align : 'L'; f->ls = (char)(S.def_ls >= 2 && S.def_ls <= 18 ? S.def_ls : 2);
     f->pl = 66; f->mt = (short)(S.def_mt > 0 ? S.def_mt : 3); f->mb = (short)(S.def_mb > 0 ? S.def_mb : 8);
     f->hm = 2; f->fm = 2; f->po = (short)(S.def_po >= 0 ? S.def_po : 8);
     if (f->hm >= f->mt) f->hm = f->mt > 1 ? f->mt - 1 : 1;
@@ -312,16 +312,42 @@ void dot_parse(const wch *t, int n, wchar_t *cmd, int cmdsz, wchar_t *arg, int a
     int i = 1, k = 0;
     cmd[0] = 0; arg[0] = 0;
     if (n >= 2 && t[1] == '.') { wcscpy(cmd, L".."); return; }
+    /* WordStar commands are two characters, so ".ls2" means ".ls 2"; header and footer
+       lines may add e or o (".h1e", ".f2o") */
     while (i < n && k < cmdsz - 1 && !IS_TAG(t[i]) && t[i] != ' ' && t[i] != '\t' &&
-           (iswalnum((wint_t)t[i]) || t[i] == '#') && k < 3) {
+           (iswalnum((wint_t)t[i]) || t[i] == '#') && k < 2) {
         cmd[k++] = (wchar_t)towlower((wint_t)t[i]); i++;
     }
     cmd[k] = 0;
+    if (k == 2 && (cmd[0] == 'h' || cmd[0] == 'f') && cmd[1] >= '1' && cmd[1] <= '5' && i < n &&
+        (towlower((wint_t)t[i]) == 'e' || towlower((wint_t)t[i]) == 'o') &&
+        (i + 1 >= n || t[i + 1] == ' ' || t[i + 1] == '\t' || IS_TAG(t[i + 1])) && k < cmdsz - 1) {
+        cmd[k++] = (wchar_t)towlower((wint_t)t[i]); i++; cmd[k] = 0;
+    }
     while (i < n && (t[i] == ' ' || t[i] == '\t')) i++;
     k = 0;
     for (; i < n && k < argsz - 1; i++) if (!IS_TAG(t[i])) arg[k++] = (wchar_t)(t[i] < 0x10000 ? t[i] : '?');
     while (k > 0 && arg[k - 1] == ' ') k--;
     arg[k] = 0;
+}
+
+int ls_parse(const wchar_t *s)
+{
+    while (*s == ' ') s++;
+    wchar_t *e;
+    double v = wcstod(s, &e);
+    if (e == s || v < 0.75) return 0;
+    int h = (int)(v * 2 + 0.5);
+    if (h < 2) h = 2;
+    if (h > 18) h = 18;
+    return h;
+}
+
+void ls_text(int halves, wchar_t *out)
+{
+    if (halves < 2) halves = 2;
+    if (halves & 1) swprintf(out, 8, L"%d.5", halves / 2);
+    else swprintf(out, 8, L"%d", halves / 2);
 }
 
 static int is_on(const wchar_t *a) { return !_wcsnicmp(a, L"on", 2) || !*a; }
@@ -341,7 +367,7 @@ static int apply_dot(Fmt *f, const wch *t, int n, int *cp)
         else if (!_wcsicmp(arg, L"r")) f->align = 'R';
     }
     else if (!wcscmp(cmd, L"oc")) f->align = is_on(arg) ? 'C' : 'L';
-    else if (!wcscmp(cmd, L"ls") && parse_measure(arg, 0, &v)) { f->ls = (char)(v < 1 ? 1 : v > 9 ? 9 : v); }
+    else if (!wcscmp(cmd, L"ls")) { int h = ls_parse(arg); if (h) f->ls = (char)h; }
     else if (!wcscmp(cmd, L"pl") && parse_measure(arg, 0, &v)) { if (v > 10) f->pl = v; }
     else if (!wcscmp(cmd, L"mt") && parse_measure(arg, 0, &v)) f->mt = v;
     else if (!wcscmp(cmd, L"mb") && parse_measure(arg, 0, &v)) f->mb = v;
@@ -586,15 +612,16 @@ relayout:
     int fnum = 1, enumn = 1, fnl = 0;   /* next footnote/endnote number; footnote lines reserved on this page */
     int pncnt[10] = { 0 }, pnstyle = 0;
     int vcstart = -1, vcpage = 0;
+    int cury2 = 0;      /* half lines used on this page (or column) */
     int usable = f.pl - f.mt - f.mb; if (usable < 1) usable = 1;
 
 #define FINISH_VC() do { if (vcstart >= 0) { int rem = usable - (pline - 1) - fnl; int sh = rem > 0 ? rem / 2 : 0; \
-        for (int q = vcstart; q < d->nl; q++) { if (d->L[q].page == vcpage) d->L[q].pline += sh; } vcstart = -1; } } while (0)
+        for (int q = vcstart; q < d->nl; q++) { if (d->L[q].page == vcpage) { d->L[q].pline += sh; d->L[q].y2 += sh * 2; } } vcstart = -1; } } while (0)
 #define NEW_PAGE(pi_, s_, forced) do { FINISH_VC(); Line pb; memset(&pb, 0, sizeof(pb)); \
         pb.type = LT_PAGEBRK; pb.p = (pi_); pb.s = pb.e = (s_); pb.page = page; pb.flags = (forced) ? LF_FORCED : 0; \
-        addline(d, &pb); page++; pline = 1; colno = 0; fnl = 0; pending = 0; pendcol = 0; } while (0)
+        addline(d, &pb); page++; pline = 1; cury2 = 0; colno = 0; fnl = 0; pending = 0; pendcol = 0; } while (0)
 #define NEW_COL(pi_, s_) do { Line cb; memset(&cb, 0, sizeof(cb)); cb.type = LT_COLBRK; cb.p = (pi_); cb.s = cb.e = (s_); \
-        cb.page = page; addline(d, &cb); colno++; pline = 1; pendcol = 0; } while (0)
+        cb.page = page; addline(d, &cb); colno++; pline = 1; cury2 = 0; pendcol = 0; } while (0)
 
     for (int pi = 0; pi < d->np; pi++) {
         Para *p = &d->p[pi];
@@ -620,6 +647,8 @@ relayout:
             else if (r == 2) { if (pline > 1 && pline + cp - 1 > usable) pending = 1; }
             l.s = 0; l.e = p->n; l.col = 0; l.type = LT_TEXT; l.flags = LF_DOT | LF_LAST;
             l.fx0 = fx; l.font0 = font; l.page = page; l.pline = pline; l.align = 'L'; l.rm = f.rm;
+            if (cury2 < (pline - 1) * 2) cury2 = (pline - 1) * 2;
+            l.y2 = (short)cury2;
             for (int k = 0; k < p->n; k++) if (IS_TAG(p->t[k])) { if (IS_FONTTAG(p->t[k])) font = (short)(p->t[k] - TG_FONT0); else fx = fx_toggle(fx, p->t[k]); }
             l.width = (short)p->n;
             if (!hide) addline(d, &l);
@@ -634,6 +663,7 @@ relayout:
                     Line g; memset(&g, 0, sizeof(g));
                     g.type = LT_GRAPHIC; g.p = pi; g.s = k; g.e = lines; g.page = page; g.pline = pline;
                     g.width = (short)(gw * 10 + 0.5); g.col = (short)(f.lm - 1);
+                    g.y2 = (short)((pline - 1) * 2);
                     addline(d, &g); pline++;
                 }
             }
@@ -775,6 +805,8 @@ relayout:
             }
             l.s = s; l.e = e; l.type = LT_TEXT; l.flags = hyph ? LF_HYPH : 0;
             l.fx0 = lfx; l.font0 = lfont; l.page = page; l.pline = pline;
+            if (cury2 < (pline - 1) * 2) cury2 = (pline - 1) * 2;
+            l.y2 = (short)cury2;
             l.width = (short)w; l.rm = (short)rm; l.align = align;
             l.colno = (uint8_t)colno; l.xoff = (short)(colno * xoffunit);
             if (e >= p->n) l.flags |= LF_LAST;
@@ -791,12 +823,14 @@ relayout:
             for (int k = s; k < e; k++) if (IS_TAG(p->t[k])) { if (IS_FONTTAG(p->t[k])) font = (short)(p->t[k] - TG_FONT0); else fx = fx_toggle(fx, p->t[k]); }
             addline(d, &l);
             pline++;
-            if (!nondoc && f.ls > 1) {
-                for (int k = 1; k < f.ls; k++) {
-                    Line sp; memset(&sp, 0, sizeof(sp));
-                    sp.type = LT_SPACER; sp.p = pi; sp.s = sp.e = e; sp.page = page; sp.pline = pline; sp.colno = (uint8_t)colno;
-                    if (pline <= usable) { addline(d, &sp); pline++; }
-                }
+            cury2 += nondoc ? 2 : (f.ls >= 2 ? f.ls : 2);
+            /* blank screen rows keep the next line in its row: one after every line when
+               double spaced, one after every second line at 1.5 */
+            while (!nondoc && pline < cury2 / 2 + 1 && pline <= usable) {
+                Line sp; memset(&sp, 0, sizeof(sp));
+                sp.type = LT_SPACER; sp.p = pi; sp.s = sp.e = e; sp.page = page; sp.pline = pline; sp.colno = (uint8_t)colno;
+                sp.y2 = (short)((pline - 1) * 2);
+                addline(d, &sp); pline++;
             }
             s = e;
             first = 0;

@@ -190,6 +190,7 @@ typedef struct {
     short rm;           /* right margin for justification */
     int page, pline;    /* page number, line on page (1-based) */
     short xoff;         /* column offset (characters) for newspaper columns */
+    short y2;           /* exact position below the top margin, in half lines */
     uint8_t colno;
 } Line;
 
@@ -197,7 +198,7 @@ typedef struct {
 typedef struct {
     short lm, rm, pm;       /* 1-based columns */
     char align;             /* 'L','C','R','J' */
-    char ls;                /* line spacing */
+    char ls;                /* line spacing in half lines: 2 single, 3 one and a half, 4 double ... 18 */
     short pl, mt, mb, hm, fm, po;  /* in lines / columns */
     short tabs[MAXTABS]; int ntabs;
     int pn;                 /* page number override (-1 none) */
@@ -280,6 +281,8 @@ Fmt  doc_fmt_at(Doc *d, int pi);
 void fmt_default(Fmt *f);
 int  parse_measure(const wchar_t *s, int horiz, int *out);
 int  tab_next(const Fmt *f, int col);    /* 1-based col -> next tab stop col */
+int  ls_parse(const wchar_t *s);               /* "1.5" -> 3 half lines; 0 if invalid */
+void ls_text(int halves, wchar_t *out);         /* 3 -> "1.5" */
 void dot_parse(const wch *t, int n, wchar_t *cmd, int cmdsz, wchar_t *arg, int argsz);
 int  wch_isword(wch c);
 

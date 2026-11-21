@@ -355,7 +355,7 @@ char *rtf_build(Doc *d, Pos *pa, Pos *pb, size_t *outlen)
         if (li) bprintf(&x, "\\li%d", li);
         if (ri > 0) bprintf(&x, "\\ri%d", ri);
         if (fi) bprintf(&x, "\\fi%d", fi);
-        if (cur.ls > 1) bprintf(&x, "\\sl%d\\slmult1", cur.ls * 240);
+        if (cur.ls > 2) bprintf(&x, "\\sl%d\\slmult1", cur.ls * 120);
         if (pagebreak) { bputs(&x, "\\pagebb"); pagebreak = 0; }
         if (cp_keep > 0) { bputs(&x, "\\keep\\keepn"); cp_keep = 0; }
         if (cur.ntabs && cur.ntabs != d->base.ntabs) for (int t = 0; t < cur.ntabs && cur.tabs[t] <= cur.rm; t++) bprintf(&x, "\\tx%d", (cur.tabs[t] - 1) * twc);
@@ -725,10 +725,10 @@ static void rpar(RCtx *c)
         append_dot(c, al == 'J' ? L".oj on" : al == 'C' ? L".oj c" : al == 'R' ? L".oj r" : L".oj off");
         c->cur_al = al;
     }
-    int ls = c->sl > 0 ? (c->sl + 120) / 240 : 1;
-    if (ls < 1) ls = 1;
-    if (ls > 3) ls = 3;
-    if (ls != c->cur_ls) { wchar_t t[16]; swprintf(t, 16, L".ls %d", ls); append_dot(c, t); c->cur_ls = ls; }
+    int ls = c->sl > 0 ? (c->sl + 60) / 120 : 2;     /* half lines; 360 twips = 1.5 */
+    if (ls < 2) ls = 2;
+    if (ls > 18) ls = 18;
+    if (ls != c->cur_ls) { wchar_t t[16], v[8]; ls_text(ls, v); swprintf(t, 16, L".ls %ls", v); append_dot(c, t); c->cur_ls = ls; }
     doc_append_para(c->d, c->pb, c->pn);
     c->d->p[c->d->np - 1].style = (uint8_t)style;
     c->pn = 0;

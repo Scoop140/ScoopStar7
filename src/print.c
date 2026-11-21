@@ -359,7 +359,7 @@ static void render_page(Doc *d, PageInfo *pi, HDC dc, int page, double dpix, dou
         short *cc = xmalloc((len + 1) * sizeof(short));
         memcpy(cc, cols, (len + 1) * sizeof(short));
         for (int j = 0; j <= len; j++) cc[j] += l->xoff;
-        double y = y0 + (f->mt + l->pline - 1) * line_h + base_off;
+        double y = y0 + (f->mt + l->y2 / 2.0) * line_h + base_off;
         uint8_t fx = l->fx0; int font = l->font0;
         int k = 0;
         double xend = -1e9; int gap = 0;

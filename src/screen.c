@@ -548,7 +548,8 @@ void settings_load(void)
     S.def_mt = geti(L"DefTopMargin", 6);        /* lines: 6 = 1.00" */
     S.def_mb = geti(L"DefBottomMargin", 8);     /* 8 = 1.33" */
     S.def_po = geti(L"DefPageOffset", 10);      /* columns: 10 = 1.00" */
-    S.def_ls = geti(L"DefLineSpacing", 1);
+    S.def_ls = geti(L"DefLineSpacingHalves", 0);
+    if (S.def_ls < 2 || S.def_ls > 18) { S.def_ls = geti(L"DefLineSpacing", 1) * 2; if (S.def_ls < 2 || S.def_ls > 18) S.def_ls = 2; }
     S.def_align = (char)geti(L"DefAlign", 'J');
     if (!strchr("LCRJ", S.def_align)) S.def_align = 'J';
     S.helplevel = geti(L"HelpLevel", 4);
@@ -578,7 +579,7 @@ void settings_save(void)
     puti(L"RealEffects", S.realfx); puti(L"BlockCursor", S.cursorblock);
     puti(L"Language", S.lang); puti(L"IgnoreCapitals", S.skipcaps);
     puti(L"DefTopMargin", S.def_mt); puti(L"DefBottomMargin", S.def_mb); puti(L"DefPageOffset", S.def_po);
-    puti(L"DefLineSpacing", S.def_ls); puti(L"DefAlign", S.def_align); puti(L"HelpLevel", S.helplevel);
+    puti(L"DefLineSpacingHalves", S.def_ls); puti(L"DefLineSpacing", S.def_ls / 2); puti(L"DefAlign", S.def_align); puti(L"HelpLevel", S.helplevel);
     if (g_hwnd && !fullscreen) {
         WINDOWPLACEMENT wp = { sizeof(wp) };
         GetWindowPlacement(g_hwnd, &wp);
