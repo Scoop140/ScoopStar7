@@ -102,7 +102,13 @@ void set_scheme(int s)
 void scr_putfx(int r, int c, wch ch, uint8_t at, uint8_t fx)
 {
     if (r < 0 || r >= SR || c < 0 || c >= SC) return;
-    scr[r][c].ch = ch; scr[r][c].at = at; scr[r][c].fx = fx;
+    scr[r][c].ch = ch; scr[r][c].at = at; scr[r][c].fx = fx; scr[r][c].lay = 0;
+    scr_dirty = 1;
+}
+void scr_setlay(int r, int c, int n, uint8_t v)
+{
+    if (r < 0 || r >= SR) return;
+    for (int i = c; i < c + n && i < SC; i++) if (i >= 0) scr[r][i].lay = v;
     scr_dirty = 1;
 }
 void scr_put(int r, int c, wch ch, uint8_t at) { scr_putfx(r, c, ch, at, 0); }
@@ -147,12 +153,12 @@ void scr_shadow(int r, int c, int h, int w)
     for (int i = 1; i <= h; i++) {
         for (int k = 0; k < 2; k++) {
             int rr = r + i, cc = c + w + k;
-            if (rr < SR && cc < SC && i < h) { scr[rr][cc].at = COL[C_DLGSHADE]; scr[rr][cc].fx = 0; }
+            if (rr < SR && cc < SC && i < h) { scr[rr][cc].at = COL[C_DLGSHADE]; scr[rr][cc].fx = 0; scr[rr][cc].lay = 0; }
         }
     }
     for (int k = 2; k < w + 2; k++) {
         int rr = r + h, cc = c + k;
-        if (rr < SR && cc < SC) { scr[rr][cc].at = COL[C_DLGSHADE]; scr[rr][cc].fx = 0; }
+        if (rr < SR && cc < SC) { scr[rr][cc].at = COL[C_DLGSHADE]; scr[rr][cc].fx = 0; scr[rr][cc].lay = 0; }
     }
     scr_dirty = 1;
 }
@@ -212,12 +218,23 @@ static void render(HDC hdc)
     for (int i = 0; i < W * H; i++) dibbits[i] = 0;
 
     int needtt = 0;
+    /* a row drawn half a row lower (1.5-type spacing) needs a blank spacer row below it */
+#define SHIFTED(r, c) (scr[r][c].lay == LAY_HALF && (r) + 1 < SR && scr[(r) + 1][c].lay == LAY_GAP)
+    for (int pass = 0; pass < 2; pass++)
     for (int r = 0; r < SR; r++) {
         for (int c = 0; c < SC; c++) {
             Cell *cl = &scr[r][c];
+            int shifted = SHIFTED(r, c);
+            if (pass == 1 && !shifted) continue;
             uint32_t fg = rgb32(cl->at & 15), bg = rgb32(cl->at >> 4);
             int x0 = ox + c * cw, y0 = oy + r * ch;
             if (x0 + cw > W || y0 + ch > H) continue;
+            if (pass == 0 && shifted) {
+                /* the gap above the lowered text */
+                for (int py = 0; py < ch; py++) { uint32_t *row = dibbits + (y0 + py) * W + x0; for (int px = 0; px < cw; px++) row[px] = bg; }
+                continue;
+            }
+            if (shifted) { y0 += ch / 2; if (y0 + ch > H) continue; }
             wch code = cl->ch;
             if (code == 0 || IS_TAG(code) || code == BIGCELL) code = ' ';
             int gi = (code < 65536) ? glyph_ix[code] : -1;
@@ -274,6 +291,7 @@ static void render(HDC hdc)
                 if (code >= 0x10000) { code -= 0x10000; buf[0] = 0xD800 + (code >> 10); buf[1] = 0xDC00 + (code & 0x3FF); n = 2; }
                 else buf[0] = (wchar_t)code;
                 RECT cr = { ox + c * cw, oy + r * ch, ox + c * cw + cw, oy + r * ch + ch };
+                if (SHIFTED(r, c)) OffsetRect(&cr, 0, ch / 2);
                 DrawTextW(mdc, buf, n, &cr, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_NOCLIP);
                 if (S.fontmode == 2 && (cl->fx & FX_BOLD)) { OffsetRect(&cr, 1, 0); DrawTextW(mdc, buf, n, &cr, DT_CENTER | DT_VCENTER | DT_SINGLELINE | DT_NOPREFIX | DT_NOCLIP); }
             }
@@ -283,6 +301,7 @@ static void render(HDC hdc)
         if (cur_vis && blink_on && GetFocus() == g_hwnd && cur_r < SR && cur_c < SC) {
             uint32_t fg = rgb32(scr[cur_r][cur_c].at & 15);
             int x0 = ox + cur_c * cw, y0 = oy + cur_r * ch;
+            if (SHIFTED(cur_r, cur_c)) y0 += ch / 2;
             int from = cur_block ? ch / 2 : ch - ch / 8 - 1;
             wch code = scr[cur_r][cur_c].ch;
             int gi = (code < 65536) ? glyph_ix[code] : -1;

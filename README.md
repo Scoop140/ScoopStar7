@@ -36,7 +36,8 @@ features, and tested each version.
 - Opens WordStar for DOS files and converts them to RTF
 - Help levels 0 to 4, from pull-down menus to no menus at all
 - Color schemes: WordStar blue, black, monochrome, amber and green
-- Protect and unprotect files
+- Protect and unprotect files, make directories, and file lists in natural
+  order (chapter2 before chapter10)
 
 ## Installing
 

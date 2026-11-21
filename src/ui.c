@@ -432,13 +432,36 @@ static int PathMatchSpecW_(const wchar_t *s, const wchar_t *p)
     return !*p;
 }
 
+/* natural order: letters ignore case, runs of digits compare as numbers ("file2" before "file10") */
+static int natcmp(const wchar_t *a, const wchar_t *b)
+{
+    while (*a && *b) {
+        if (iswdigit(*a) && iswdigit(*b)) {
+            while (*a == '0' && iswdigit(a[1])) a++;
+            while (*b == '0' && iswdigit(b[1])) b++;
+            int la = 0, lb = 0;
+            while (iswdigit(a[la])) la++;
+            while (iswdigit(b[lb])) lb++;
+            if (la != lb) return la - lb;
+            for (int i = 0; i < la; i++) if (a[i] != b[i]) return a[i] - b[i];
+            a += la; b += lb;
+            continue;
+        }
+        wint_t ca = towlower(*a), cb = towlower(*b);
+        if (ca != cb) return (int)ca - (int)cb;
+        a++; b++;
+    }
+    return (*a != 0) - (*b != 0);
+}
+
 static int fent_cmp(const void *a, const void *b)
 {
     const FEnt *x = a, *y = b;
     if (x->isdir != y->isdir) return y->isdir - x->isdir;
     if (!wcscmp(x->name, L"..")) return -1;
     if (!wcscmp(y->name, L"..")) return 1;
-    return _wcsicmp(x->name, y->name);
+    int r = natcmp(x->name, y->name);
+    return r ? r : _wcsicmp(x->name, y->name);
 }
 
 static int spec_match(const wchar_t *name, const wchar_t *spec)
@@ -568,6 +591,9 @@ int file_dialog(const wchar_t *title, wchar_t *path, int forsave, const wchar_t 
         scr_putsn(r + 4, 3, info, SC - 20, COL[C_DLG]);
         scr_puts(r + 5, 1, L"Files:", COL[C_DLGHOT]);
         scr_fill(r + 5, 8, SC - 9, 0x2500, COL[C_DLG]);
+        const wchar_t *mdh = L" F7 new directory ";
+        int mdc = SC - 2 - (int)wcslen(mdh);
+        scr_puts(r + 5, mdc, mdh, COL[C_DLGHOT]);
         /* list */
         int colw = SC / 4;
         for (int i = 0; i < listh; i++) scr_fill(listr + i, 1, SC - 2, ' ', COL[C_DLG]);
@@ -592,6 +618,7 @@ int file_dialog(const wchar_t *title, wchar_t *path, int forsave, const wchar_t 
             if (e.mr == r + 2 && e.mc >= bx) { result = 1; goto accept; }
             if (e.mr == r + 4 && e.mc >= bx) break;
             if (e.mr == r + 2) { focus = 0; fresh = 0; continue; }
+            if (e.mr == r + 5 && e.mc >= mdc) { e.type = EV_KEY; e.key = K_F7; goto keys; }
             if (e.mr >= listr && e.mr < listr + listh) {
                 int ix = top + (e.mr - listr) * 4 + (e.mc - 1) / colw;
                 if (ix < n) {
@@ -603,9 +630,19 @@ int file_dialog(const wchar_t *title, wchar_t *path, int forsave, const wchar_t 
             }
             if (!open_sel) continue;
         }
+    keys:
         if (e.type == EV_KEY || open_sel) {
             int k = open_sel ? K_ENTER : e.key;
             if (k == K_ESC) break;
+            if (k == K_F7) {
+                wchar_t made[MAX_PATH];
+                if (fileop_mkdir(made)) {
+                    free(v); n = list_dir(&v, spec && spec[0] ? spec : L"*.*"); top = 0; sel = 0;
+                    for (int i = 0; i < n; i++) if (v[i].isdir && !_wcsicmp(v[i].name, made)) sel = i;
+                    focus = 1;
+                }
+                continue;
+            }
             if (k == K_TAB || k == K_BTAB) { focus = !focus; fresh = 1; continue; }
             if (k == K_F10 || k == CTRL('K')) { result = 1; goto accept; }
             if (focus == 1) {
@@ -709,6 +746,21 @@ void fileop_rename(void)
     const wchar_t *b = wcsrchr(f, '\\'); wcscpy(to, b ? b + 1 : f);
     if (!input_box(L"Rename", L"New name:", to, MAX_PATH) || !to[0]) return;
     if (!MoveFileW(f, to)) message(L"Couldn't rename the file.");
+}
+
+/* returns 1 if a directory was made; its name goes to made (may be NULL) */
+int fileop_mkdir(wchar_t *made)
+{
+    wchar_t d[MAX_PATH] = L"";
+    if (!input_box(L"Make Directory", L"Name of the new directory:", d, MAX_PATH) || !d[0]) return 0;
+    if (!CreateDirectoryW(d, NULL)) {
+        DWORD e = GetLastError();
+        message(e == ERROR_ALREADY_EXISTS ? L"A file or directory with that name already exists."
+                                          : L"The directory could not be made.");
+        return 0;
+    }
+    if (made) wcscpy(made, d);
+    return 1;
 }
 
 void fileop_chdir(void)
@@ -1345,7 +1397,7 @@ void opening_screen(void)
         scr_puts(hr + 4, (SC - 52) / 2, L"A WordStar 7.0 work-alike for Windows - Scoop Suite", COL[C_OPENHELP]);
         scr_puts(hr + 6, 4, L"D open a document   S new document   N open a nondocument   P print", COL[C_OPENHELP]);
         scr_puts(hr + 7, 4, L"L change directory  F files displayed  O copy  Y delete  E rename  X exit", COL[C_OPENHELP]);
-        scr_puts(hr + 8, 4, L"C protect a file    I index   T table of contents   J help level", COL[C_OPENHELP]);
+        scr_puts(hr + 8, 4, L"C protect a file    M make directory   I index   T contents   J help level", COL[C_OPENHELP]);
         int lr = hr + 10;
         wchar_t cd[MAX_PATH]; GetCurrentDirectoryW(MAX_PATH, cd);
         ULARGE_INTEGER fb; GetDiskFreeSpaceExW(NULL, &fb, NULL, NULL);
@@ -1405,6 +1457,7 @@ void opening_screen(void)
                 case 'Y': cmd = OCMD_DELETE; break;
                 case 'E': cmd = OCMD_RENAME; break;
                 case 'L': cmd = OCMD_CHDIR; break;
+                case 'M': cmd = OCMD_MKDIR; break;
                 case 'F': cmd = OCMD_FILESPEC; break;
                 case 'R': cmd = OCMD_RUNDOS; break;
                 case 'X': cmd = OCMD_EXIT; break;
@@ -1439,6 +1492,7 @@ void opening_screen(void)
         case OCMD_DELETE: fileop_delete(); break;
         case OCMD_RENAME: fileop_rename(); break;
         case OCMD_CHDIR: fileop_chdir(); sel = 0; top = 0; break;
+        case OCMD_MKDIR: fileop_mkdir(NULL); break;
         case OCMD_FILESPEC: {
             wchar_t sp[64]; wcscpy(sp, S.filespec);
             int r = msgbox(L"Change Filename Display", L"Show the list of files?", L"&Yes|&No");

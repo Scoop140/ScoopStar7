@@ -206,7 +206,8 @@ static void draw_stylebar(void)
     Line *l = cur_line(w);
     Fmt f = doc_fmt_at(d, w->cur.p);
     char al = l->align ? l->align : 'L';
-    wchar_t ls[12], lt[8]; ls_text(f.ls, lt); swprintf(ls, 12, L"%c%ls", 0x2195, lt);
+    wchar_t ls[12];        /* three cells wide: 1.5 shows as a half sign */
+    if (f.ls & 1) swprintf(ls, 12, L"%c%d%c", 0x2195, f.ls / 2, 0xBD); else swprintf(ls, 12, L" %c%d", 0x2195, f.ls / 2);
     struct { const wchar_t *t; int on; } b[9] = {
         { L" B ", fx & FX_BOLD }, { L" I ", fx & FX_ITALIC }, { L" U ", fx & FX_UNDER }, { L"<*>", S.show_tags },
         { L" L ", al == 'L' }, { L" C ", al == 'C' }, { L" R ", al == 'R' }, { L" J ", al == 'J' }, { ls, 0 } };
@@ -384,6 +385,21 @@ static void draw_window(int wi)
             if (cols[len] - w->hscroll > tw) fl = '+';
             scr_put(r, flagc, fl, COL[C_FLAG]);
         }
+    }
+    /* 1.5-type spacing: a line that starts half a row down is drawn lower, into the blank row below it */
+    for (int i = 0; i < w->rows; i++) {
+        int li = w->top + i;
+        if (li >= d->nl) break;
+        Line *l = &d->L[li];
+#define HALFLINE(k) ((k) >= 0 && (k) + 1 < d->nl && d->L[k].type == LT_TEXT && !(d->L[k].flags & LF_DOT) && \
+                     (d->L[k].y2 & 1) && d->L[(k) + 1].type == LT_SPACER)
+        int span = tw + (flagc >= 0 ? 1 : 0);      /* the flag column moves with its line */
+        if (HALFLINE(li)) scr_setlay(w->r0 + i, 0, span, LAY_HALF);
+        else if (l->type == LT_SPACER && HALFLINE(li - 1)) {
+            if (flagc >= 0) scr_put(w->r0 + i, flagc, ' ', COL[C_FLAG]);
+            scr_setlay(w->r0 + i, 0, span, LAY_GAP);
+        }
+#undef HALFLINE
     }
     /* scroll bar */
     if (scrc >= 0) {
@@ -2678,6 +2694,7 @@ static int exec_cmd(int cmd, int arg)
     case CMD_FDELETE: fileop_delete(); break;
     case CMD_FRENAME: fileop_rename(); break;
     case CMD_CHDIR: fileop_chdir(); break;
+    case CMD_MKDIR: { wchar_t made[MAX_PATH]; if (fileop_mkdir(made)) flash(L"Directory %ls made", made); break; }
     case CMD_RUNDOS: fileop_rundos(); break;
     case CMD_STATUS: status_info(w); break;
 

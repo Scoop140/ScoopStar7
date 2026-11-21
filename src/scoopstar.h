@@ -61,7 +61,10 @@ int font_find_or_add(const wchar_t *name, int halfpts);
 /* ---- Screen ---- */
 #define MAXR 60
 #define MAXC 132
-typedef struct { wch ch; uint8_t at; uint8_t fx; } Cell;
+typedef struct { wch ch; uint8_t at; uint8_t fx; uint8_t lay; } Cell;   /* lay: LAY_* below */
+#define LAY_HALF 1   /* text drawn half a row lower (1.5-type line spacing) */
+#define LAY_GAP  2   /* blank spacer row that the half-lowered row above may draw into */
+void scr_setlay(int r, int c, int n, uint8_t v);
 extern Cell scr[MAXR][MAXC];
 extern int SR, SC;                  /* screen rows / cols */
 
@@ -351,6 +354,7 @@ void fileop_copy(void);
 void fileop_delete(void);
 void fileop_rename(void);
 void fileop_chdir(void);
+int  fileop_mkdir(wchar_t *made);
 void fileop_rundos(void);
 int  screen_settings_dialog(void);
 int  doc_defaults_dialog(void);
