@@ -459,8 +459,24 @@ static void render_page(Doc *d, PageInfo *pi, HDC dc, int page, double dpix, dou
     S.show_tags = saved_tags;
 }
 
-/* sets the printer's paper to the page's size and orientation; returns 1 if the DC was changed */
-static int set_paper(HDC dc, HGLOBAL hdm, Fmt *f, int *cur_w, int *cur_l, int *cur_land)
+/* the printer named in a PRINTDLG's hDevNames */
+static void devnames(HGLOBAL hdn, wchar_t *drv, wchar_t *dev, wchar_t *port)
+{
+    drv[0] = dev[0] = port[0] = 0;
+    DEVNAMES *dn = hdn ? GlobalLock(hdn) : NULL;
+    if (!dn) return;
+    const wchar_t *base = (const wchar_t *)dn;
+    wcsncpy(drv, base + dn->wDriverOffset, 63); drv[63] = 0;
+    wcsncpy(dev, base + dn->wDeviceOffset, 255); dev[255] = 0;
+    wcsncpy(port, base + dn->wOutputOffset, 63); port[63] = 0;
+    GlobalUnlock(hdn);
+}
+
+/* sets the printer's paper to the page's size and orientation, using the paper
+   the printer driver itself lists for that size, and lets the driver merge the
+   change into its own settings (many drivers ignore a change they did not see).
+   Returns 1 if the paper changed (and the DC, if given, was reset). */
+static int set_paper(HDC dc, HGLOBAL hdm, HGLOBAL hdn, Fmt *f, int *cur_w, int *cur_l, int *cur_land)
 {
     if (!hdm) return 0;
     int w = f->pw > 0 ? f->pw : 85, l = f->pl, land = f->land;    /* tenths of an inch, lines */
@@ -468,29 +484,69 @@ static int set_paper(HDC dc, HGLOBAL hdm, Fmt *f, int *cur_w, int *cur_l, int *c
     *cur_w = w; *cur_l = l; *cur_land = land;
     DEVMODEW *dm = GlobalLock(hdm);
     if (!dm) return 0;
+    wchar_t drv[64], dev[256], port[64];
+    devnames(hdn, drv, dev, port);
+    if (!dev[0]) wcsncpy(dev, dm->dmDeviceName, 31), dev[31] = 0;
     /* the paper as it goes into the printer is portrait; landscape turns the page */
     double win = w / 10.0, lin = l / 6.0;
     if (land) { double t = win; win = lin; lin = t; }
-    static const struct { double w, h; short id; } std[] = {
-        { 8.5, 11, DMPAPER_LETTER }, { 8.5, 14, DMPAPER_LEGAL }, { 5.5, 8.5, DMPAPER_STATEMENT },
-        { 7.25, 10.5, DMPAPER_EXECUTIVE }, { 8.27, 11.69, DMPAPER_A4 }, { 5.83, 8.27, DMPAPER_A5 },
-        { 4.125, 9.5, DMPAPER_ENV_10 },
-    };
-    short id = 0;
-    for (int i = 0; i < (int)(sizeof(std) / sizeof(std[0])); i++)
-        if (fabs(std[i].w - win) < 0.08 && fabs(std[i].h - lin) < 0.08) id = std[i].id;
+    int wmm = (int)(win * 254 + 0.5), lmm = (int)(lin * 254 + 0.5);    /* tenths of a millimetre */
+    /* look for the size in the driver's own paper list */
+    short id = 0; wchar_t pname[64] = L"";
+    int n = DeviceCapabilitiesW(dev, port, DC_PAPERS, NULL, NULL);
+    if (n > 0 && n < 2000) {
+        WORD *ids = xmalloc(n * sizeof(WORD));
+        POINT *sz = xmalloc(n * sizeof(POINT));
+        wchar_t *names = xmalloc(n * 64 * sizeof(wchar_t));
+        memset(names, 0, n * 64 * sizeof(wchar_t));
+        if (DeviceCapabilitiesW(dev, port, DC_PAPERS, (LPWSTR)ids, NULL) == n &&
+            DeviceCapabilitiesW(dev, port, DC_PAPERSIZE, (LPWSTR)sz, NULL) == n) {
+            DeviceCapabilitiesW(dev, port, DC_PAPERNAMES, names, NULL);
+            int best = -1, bestd = 1 << 30;
+            for (int i = 0; i < n; i++) {
+                int dw = abs(sz[i].x - wmm), dl = abs(sz[i].y - lmm);
+                if (dw <= 20 && dl <= 20 && ids[i] != DMPAPER_USER) {    /* within 2 mm */
+                    int dd = dw + dl;
+                    /* prefer the standard size over a borderless or driver variant of it */
+                    if (ids[i] < DMPAPER_USER) dd -= 1;
+                    if (dd < bestd) { bestd = dd; best = i; }
+                }
+            }
+            if (best >= 0) { id = (short)ids[best]; wcsncpy(pname, names + best * 64, 63); pname[63] = 0; }
+        }
+        free(ids); free(sz); free(names);
+    }
     dm->dmFields |= DM_ORIENTATION | DM_PAPERSIZE;
     dm->dmOrientation = land ? DMORIENT_LANDSCAPE : DMORIENT_PORTRAIT;
-    if (id) { dm->dmPaperSize = id; dm->dmFields &= ~(DM_PAPERWIDTH | DM_PAPERLENGTH); }
-    else {
+    if (id) {
+        dm->dmPaperSize = id;
+        dm->dmFields &= ~(DM_PAPERWIDTH | DM_PAPERLENGTH);
+        if (pname[0]) { wcsncpy(dm->dmFormName, pname, CCHFORMNAME - 1); dm->dmFormName[CCHFORMNAME - 1] = 0; dm->dmFields |= DM_FORMNAME; }
+        else dm->dmFields &= ~DM_FORMNAME;
+    } else {
         dm->dmPaperSize = DMPAPER_USER;
         dm->dmFields |= DM_PAPERWIDTH | DM_PAPERLENGTH;
-        dm->dmPaperWidth = (short)(win * 254 + 0.5);     /* tenths of a millimetre */
-        dm->dmPaperLength = (short)(lin * 254 + 0.5);
+        dm->dmFields &= ~DM_FORMNAME;    /* a form name would override the size */
+        dm->dmFormName[0] = 0;
+        dm->dmPaperWidth = (short)wmm;
+        dm->dmPaperLength = (short)lmm;
+    }
+    /* let the driver merge the change into its private settings */
+    HANDLE hp = NULL;
+    if (OpenPrinterW(dev, &hp, NULL) && hp) {
+        LONG need = DocumentPropertiesW(NULL, hp, dev, NULL, NULL, 0);
+        SIZE_T have = GlobalSize(hdm);
+        if (need > 0 && (SIZE_T)need <= have) {
+            DEVMODEW *out = xmalloc(need);
+            if (DocumentPropertiesW(NULL, hp, dev, out, dm, DM_IN_BUFFER | DM_OUT_BUFFER) == IDOK)
+                memcpy(dm, out, need);
+            free(out);
+        }
+        ClosePrinter(hp);
     }
     HDC r = dc ? ResetDCW(dc, dm) : NULL;
     GlobalUnlock(hdm);
-    return r != NULL;
+    return dc ? r != NULL : 1;
 }
 
 int print_document(Doc *d)
@@ -499,7 +555,7 @@ int print_document(Doc *d)
     PRINTDLGW pd; memset(&pd, 0, sizeof(pd));
     pd.lStructSize = sizeof(pd);
     pd.hwndOwner = g_hwnd;
-    pd.Flags = PD_RETURNDC | PD_ALLPAGES | PD_NOSELECTION | PD_USEDEVMODECOPIESANDCOLLATE;
+    pd.Flags = PD_ALLPAGES | PD_NOSELECTION | PD_USEDEVMODECOPIESANDCOLLATE;
     PageInfo *pi = build_pages(d);
     pd.nMinPage = 1; pd.nMaxPage = (WORD)(g_ptotal > 65000 ? 65000 : g_ptotal);
     pd.nFromPage = 1; pd.nToPage = pd.nMaxPage;
@@ -510,26 +566,37 @@ int print_document(Doc *d)
         def.lStructSize = sizeof(def); def.hwndOwner = g_hwnd; def.Flags = PD_RETURNDEFAULT;
         if (PrintDlgW(&def) && def.hDevMode) {
             int a = -1, b = -1, c = -1;
-            for (int p = 1; p <= g_ptotal; p++) if (pi[p].f.pl) { set_paper(NULL, def.hDevMode, &pi[p].f, &a, &b, &c); break; }
+            for (int p = 1; p <= g_ptotal; p++) if (pi[p].f.pl) { set_paper(NULL, def.hDevMode, def.hDevNames, &pi[p].f, &a, &b, &c); break; }
             pd.hDevMode = def.hDevMode; pd.hDevNames = def.hDevNames;
         }
     }
     if (!PrintDlgW(&pd)) { ev_flush(); free(pi); return 0; }
     ev_flush();
-    HDC dc = pd.hDC;
     int from = 1, to = g_ptotal;
     if (pd.Flags & PD_PAGENUMS) { from = pd.nFromPage; to = pd.nToPage; }
+    /* set the first printed page's paper, then open the printer with it */
+    int cw = -1, cl = -1, cland = -1;
+    if (from >= 1 && from <= g_ptotal) set_paper(NULL, pd.hDevMode, pd.hDevNames, &pi[from].f, &cw, &cl, &cland);
+    HDC dc = NULL;
+    {
+        wchar_t drv[64], dev[256], port[64];
+        devnames(pd.hDevNames, drv, dev, port);
+        DEVMODEW *dm = pd.hDevMode ? GlobalLock(pd.hDevMode) : NULL;
+        if (dev[0]) dc = CreateDCW(drv[0] ? drv : NULL, dev, NULL, dm);
+        if (dm) GlobalUnlock(pd.hDevMode);
+    }
+    if (!dc) {
+        msgbox(L"Print", L"The printer could not be started.", L"OK");
+        if (pd.hDevMode) GlobalFree(pd.hDevMode);
+        if (pd.hDevNames) GlobalFree(pd.hDevNames);
+        free(pi); return 0;
+    }
     double dpix = GetDeviceCaps(dc, LOGPIXELSX), dpiy = GetDeviceCaps(dc, LOGPIXELSY);
     double offx = GetDeviceCaps(dc, PHYSICALOFFSETX), offy = GetDeviceCaps(dc, PHYSICALOFFSETY);
     DOCINFOW di; memset(&di, 0, sizeof(di)); di.cbSize = sizeof(di);
     const wchar_t *nm = wcsrchr(d->path, '\\');
     di.lpszDocName = nm ? nm + 1 : (d->path[0] ? d->path : L"ScoopStar document");
     int ok = 1;
-    int cw = 85, cl = 66, cland = 0;     /* the printer's paper as chosen in the Print dialog is used until a page differs */
-    {
-        DEVMODEW *dm = pd.hDevMode ? GlobalLock(pd.hDevMode) : NULL;
-        if (dm) { cw = -1; GlobalUnlock(pd.hDevMode); }    /* always set the first page's paper */
-    }
     if (StartDocW(dc, &di) > 0) {
         fcache_clear();
         for (int pg = from; pg <= to && pg <= g_ptotal; pg++) {
@@ -542,7 +609,7 @@ int print_document(Doc *d)
             Event e; ev_get(&e, 0);
             scr_restore(save); free(save);
             if (e.type == EV_KEY && e.key == K_ESC) { AbortDoc(dc); ok = 0; break; }
-            if (set_paper(dc, pd.hDevMode, &pi[pg].f, &cw, &cl, &cland)) {
+            if (pg > from && set_paper(dc, pd.hDevMode, pd.hDevNames, &pi[pg].f, &cw, &cl, &cland)) {
                 dpix = GetDeviceCaps(dc, LOGPIXELSX); dpiy = GetDeviceCaps(dc, LOGPIXELSY);
                 offx = GetDeviceCaps(dc, PHYSICALOFFSETX); offy = GetDeviceCaps(dc, PHYSICALOFFSETY);
                 fcache_clear();

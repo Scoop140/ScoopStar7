@@ -22,5 +22,5 @@ for f in screen doc edit menus ui fileio print spell gen; do
   x86_64-w64-mingw32-gcc -O2 -std=gnu11 -Wall -Wno-unused-function -municode -DHUNSPELL_STATIC -c $f.c -o obj/$f.o
 done
 x86_64-w64-mingw32-g++ -O2 -municode -mwindows -static -o ../ScoopStar.exe obj/*.o scoopstar_res.o \
-  ../hunspell/libhunspell.a ../hyphen/libhyphen.a -lgdi32 -luser32 -lcomdlg32 -lshell32 -lole32 -luuid -lgdiplus
+  ../hunspell/libhunspell.a ../hyphen/libhyphen.a -lgdi32 -luser32 -lcomdlg32 -lwinspool -lshell32 -lole32 -luuid -lgdiplus
 echo built ../ScoopStar.exe
