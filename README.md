@@ -1,4 +1,4 @@
-# ScoopStar 7.1
+# ScoopStar 7.1.1
 
 A WordStar 7.0 for DOS work-alike for Windows 11, written in C.
 
@@ -42,6 +42,12 @@ features, and tested each version.
 - Starts in full screen (can be turned off in Screen Settings)
 - Protect and unprotect files, make directories, and file lists in natural
   order (chapter2 before chapter10)
+
+## What's new in 7.1.1
+
+- Printing now uses the document's paper size on printers whose drivers
+  keep their own paper settings (such as Canon inkjets). ScoopStar picks
+  the paper from the printer's own list and opens the printer with it.
 
 ## What's new in 7.1
 

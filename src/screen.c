@@ -672,7 +672,7 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE hp, PWSTR cmd, int show)
     int ww = r.right - r.left, wh = r.bottom - r.top;
     int wx = CW_USEDEFAULT, wy = CW_USEDEFAULT;
     if (S.winw > 300 && S.winh > 200) { ww = S.winw; wh = S.winh; wx = S.winx; wy = S.winy; }
-    g_hwnd = CreateWindowW(L"ScoopStar7", L"ScoopStar 7.1", WS_OVERLAPPEDWINDOW, wx, wy, ww, wh, NULL, NULL, hi, NULL);
+    g_hwnd = CreateWindowW(L"ScoopStar7", L"ScoopStar 7.1.1", WS_OVERLAPPEDWINDOW, wx, wy, ww, wh, NULL, NULL, hi, NULL);
     ShowWindow(g_hwnd, S.maximized ? SW_SHOWMAXIMIZED : show);
     if (S.startfull) toggle_fullscreen();
     UpdateWindow(g_hwnd);
