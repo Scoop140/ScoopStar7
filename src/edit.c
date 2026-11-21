@@ -1536,6 +1536,7 @@ static int spell_dialog(const wchar_t *word, int lang, wchar_t *rep)
         else if (k == K_UP && ns) { focus = 0; }
         else if (k == K_BS) { if (fresh) { rep[0] = 0; epos = 0; } else if (epos > 0) { memmove(rep + epos - 1, rep + epos, (len - epos + 1) * sizeof(wchar_t)); epos--; } fresh = 0; }
         else if (k == K_DEL || k == CTRL('G')) { if (epos < len) memmove(rep + epos, rep + epos + 1, (len - epos) * sizeof(wchar_t)); fresh = 0; }
+        else if (k == CTRL('V') || k == K_SINS) field_paste(rep, 63, &epos, &fresh);
         else if (k >= 32 && k < 0x10000 && len < 62) {
             if (fresh) { rep[0] = 0; epos = 0; len = 0; }
             fresh = 0;

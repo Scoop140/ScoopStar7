@@ -334,6 +334,7 @@ typedef struct {
     int id;                     /* button id returned */
     int lcol;                   /* column for edit field start (after label) */
 } DCtl;
+int  field_paste(wchar_t *buf, int bufsz, int *epos, int *fresh);   /* Ctrl+V / Shift+Ins in a typing box */
 int dialog_run(const wchar_t *title, int r, int c, int h, int w, DCtl *ctl, int nctl, int focus);
 
 /* ---- Files ---- */

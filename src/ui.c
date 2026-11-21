@@ -84,6 +84,35 @@ static void draw_ctl(int br, int bc, DCtl *c, int focused, int *curr, int *curc,
     }
 }
 
+/* pastes the first line of the Windows clipboard into a typing box at *epos; returns 1 if anything was pasted */
+int field_paste(wchar_t *buf, int bufsz, int *epos, int *fresh)
+{
+    if (!OpenClipboard(g_hwnd)) return 0;
+    int done = 0;
+    HGLOBAL h = GetClipboardData(CF_UNICODETEXT);
+    const wchar_t *src = h ? GlobalLock(h) : NULL;
+    if (src) {
+        if (fresh && *fresh) { buf[0] = 0; *epos = 0; }
+        if (fresh) *fresh = 0;
+        int len = (int)wcslen(buf);
+        if (*epos > len) *epos = len;
+        while (*src == ' ' || *src == '\t') src++;
+        int n = 0;
+        while (src[n] && src[n] != '\r' && src[n] != '\n') n++;
+        while (n > 0 && (src[n - 1] == ' ' || src[n - 1] == '\t')) n--;
+        if (n > bufsz - 1 - len) n = bufsz - 1 - len;
+        if (n > 0) {
+            memmove(buf + *epos + n, buf + *epos, (len - *epos + 1) * sizeof(wchar_t));
+            for (int i = 0; i < n; i++) buf[*epos + i] = src[i] == '\t' ? ' ' : src[i];
+            *epos += n;
+            done = 1;
+        }
+        GlobalUnlock(h);
+    }
+    CloseClipboard();
+    return done;
+}
+
 int dialog_run(const wchar_t *title, int r, int c, int h, int w, DCtl *ctl, int n, int focus)
 {
     Cell *save = xmalloc(sizeof(scr));
@@ -160,6 +189,7 @@ int dialog_run(const wchar_t *title, int r, int c, int h, int w, DCtl *ctl, int 
                 else if (k == K_BS || k == CTRL('H')) { if (fresh) { f->buf[0] = 0; epos = 0; } else if (epos > 0) { memmove(f->buf + epos - 1, f->buf + epos, (len - epos + 1) * sizeof(wchar_t)); epos--; } fresh = 0; }
                 else if (k == K_DEL || k == CTRL('G')) { if (epos < len) memmove(f->buf + epos, f->buf + epos + 1, (len - epos) * sizeof(wchar_t)); fresh = 0; }
                 else if (k == CTRL('Y')) { f->buf[0] = 0; epos = 0; fresh = 0; }
+                else if (k == CTRL('V') || k == K_SINS) field_paste(f->buf, f->bufsz, &epos, &fresh);
                 else if (k == CTRL('R')) { wcsncpy(f->buf, orig, f->bufsz - 1); f->buf[f->bufsz - 1] = 0; epos = (int)wcslen(f->buf); fresh = 0; }
                 else if (k == K_UP || k == K_DOWN) {
                     int dir = k == K_DOWN ? 1 : -1, i = focus;
@@ -678,6 +708,7 @@ int file_dialog(const wchar_t *title, wchar_t *path, int forsave, const wchar_t 
             else if (k == K_BS) { if (fresh) { name[0] = 0; epos = 0; } else if (epos > 0) { memmove(name + epos - 1, name + epos, (len - epos + 1) * sizeof(wchar_t)); epos--; } fresh = 0; }
             else if (k == K_DEL || k == CTRL('G')) { if (epos < len) memmove(name + epos, name + epos + 1, (len - epos) * sizeof(wchar_t)); fresh = 0; }
             else if (k == CTRL('Y')) { name[0] = 0; epos = 0; }
+            else if (k == CTRL('V') || k == K_SINS) field_paste(name, MAX_PATH, &epos, &fresh);
             else if (k >= 32 && k < 0x10000 && len < MAX_PATH - 2) {
                 if (fresh) { name[0] = 0; epos = 0; len = 0; }
                 fresh = 0;
