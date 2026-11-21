@@ -571,6 +571,7 @@ void settings_load(void)
     if (S.def_ls < 2 || S.def_ls > 18) { S.def_ls = geti(L"DefLineSpacing", 1) * 2; if (S.def_ls < 2 || S.def_ls > 18) S.def_ls = 2; }
     S.def_align = (char)geti(L"DefAlign", 'J');
     if (!strchr("LCRJ", S.def_align)) S.def_align = 'J';
+    S.startfull = geti(L"StartFullScreen", 1);
     S.helplevel = geti(L"HelpLevel", 4);
     if (S.helplevel < 0 || S.helplevel > 4) S.helplevel = 4;
     S.winx = geti(L"WinX", CW_USEDEFAULT);
@@ -598,7 +599,7 @@ void settings_save(void)
     puti(L"RealEffects", S.realfx); puti(L"BlockCursor", S.cursorblock);
     puti(L"Language", S.lang); puti(L"IgnoreCapitals", S.skipcaps);
     puti(L"DefTopMargin", S.def_mt); puti(L"DefBottomMargin", S.def_mb); puti(L"DefPageOffset", S.def_po);
-    puti(L"DefLineSpacingHalves", S.def_ls); puti(L"DefLineSpacing", S.def_ls / 2); puti(L"DefAlign", S.def_align); puti(L"HelpLevel", S.helplevel);
+    puti(L"DefLineSpacingHalves", S.def_ls); puti(L"DefLineSpacing", S.def_ls / 2); puti(L"DefAlign", S.def_align); puti(L"HelpLevel", S.helplevel); puti(L"StartFullScreen", S.startfull);
     if (g_hwnd && !fullscreen) {
         WINDOWPLACEMENT wp = { sizeof(wp) };
         GetWindowPlacement(g_hwnd, &wp);
@@ -671,8 +672,9 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE hp, PWSTR cmd, int show)
     int ww = r.right - r.left, wh = r.bottom - r.top;
     int wx = CW_USEDEFAULT, wy = CW_USEDEFAULT;
     if (S.winw > 300 && S.winh > 200) { ww = S.winw; wh = S.winh; wx = S.winx; wy = S.winy; }
-    g_hwnd = CreateWindowW(L"ScoopStar7", L"ScoopStar 7.0", WS_OVERLAPPEDWINDOW, wx, wy, ww, wh, NULL, NULL, hi, NULL);
+    g_hwnd = CreateWindowW(L"ScoopStar7", L"ScoopStar 7.1", WS_OVERLAPPEDWINDOW, wx, wy, ww, wh, NULL, NULL, hi, NULL);
     ShowWindow(g_hwnd, S.maximized ? SW_SHOWMAXIMIZED : show);
+    if (S.startfull) toggle_fullscreen();
     UpdateWindow(g_hwnd);
     SetTimer(g_hwnd, 1, 530, NULL);
 

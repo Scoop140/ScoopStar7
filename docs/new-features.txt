@@ -98,3 +98,11 @@ REMOVED
   Items that did nothing are gone: Macros, the Additional menu (MailList,
   TelMerge, Star Exchange), Auto Align, and the unused ^O commands. Every
   remaining menu item and classic command works.
+
+NEW IN 7.1: PAPER SIZE, ORIENTATION, FULL SCREEN
+  .pw sets the paper width and .pr or=l makes the page landscape (.pr or=p
+  returns to portrait). Layout > Page (^OY) has a Paper Size list (Letter,
+  Legal, Statement, Executive, A4, A5, #10 Envelope) and Portrait and
+  Landscape buttons. Preview shows the real paper, and printing uses the
+  document's paper size and orientation. ScoopStar now starts in full
+  screen; Utilities > Screen Settings > Start in full screen turns it off.

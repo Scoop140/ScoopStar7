@@ -1,4 +1,4 @@
-# ScoopStar 7.0
+# ScoopStar 7.1
 
 A WordStar 7.0 for DOS work-alike for Windows 11, written in C.
 
@@ -32,12 +32,24 @@ features, and tested each version.
   with personal dictionaries, and an English thesaurus
 - Automatic hyphenation for English and German, and soft hyphens
 - Index and table of contents generation
-- Page Preview and printing to any Windows printer
+- Paper sizes (Letter, Legal, Statement, Executive, A4, A5, #10 envelope or
+  any custom size with `.pw` and `.pl`), portrait or landscape (`.pr or=l`)
+- Page Preview of the real paper, and printing to any Windows printer on the
+  document's own paper size and orientation
 - Opens WordStar for DOS files and converts them to RTF
 - Help levels 0 to 4, from pull-down menus to no menus at all
 - Color schemes: WordStar blue, black, monochrome, amber and green
+- Starts in full screen (can be turned off in Screen Settings)
 - Protect and unprotect files, make directories, and file lists in natural
   order (chapter2 before chapter10)
+
+## What's new in 7.1
+
+- `.pw` paper width and `.pr or=l` / `.pr or=p` orientation dot commands
+- Paper Size list in Layout > Page (^OY)
+- Preview draws the actual paper; printing sets the paper size and orientation
+- RTF files keep the paper size and landscape setting
+- Starts in full screen by default
 
 ## Installing
 

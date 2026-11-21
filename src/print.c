@@ -5,6 +5,7 @@
  * 6 lines per inch down, with WordStar's margins, headers and footers.
  */
 #include "scoopstar.h"
+#include <math.h>
 #include <commdlg.h>
 
 #define HFN 5
@@ -458,6 +459,40 @@ static void render_page(Doc *d, PageInfo *pi, HDC dc, int page, double dpix, dou
     S.show_tags = saved_tags;
 }
 
+/* sets the printer's paper to the page's size and orientation; returns 1 if the DC was changed */
+static int set_paper(HDC dc, HGLOBAL hdm, Fmt *f, int *cur_w, int *cur_l, int *cur_land)
+{
+    if (!hdm) return 0;
+    int w = f->pw > 0 ? f->pw : 85, l = f->pl, land = f->land;    /* tenths of an inch, lines */
+    if (w == *cur_w && l == *cur_l && land == *cur_land) return 0;
+    *cur_w = w; *cur_l = l; *cur_land = land;
+    DEVMODEW *dm = GlobalLock(hdm);
+    if (!dm) return 0;
+    /* the paper as it goes into the printer is portrait; landscape turns the page */
+    double win = w / 10.0, lin = l / 6.0;
+    if (land) { double t = win; win = lin; lin = t; }
+    static const struct { double w, h; short id; } std[] = {
+        { 8.5, 11, DMPAPER_LETTER }, { 8.5, 14, DMPAPER_LEGAL }, { 5.5, 8.5, DMPAPER_STATEMENT },
+        { 7.25, 10.5, DMPAPER_EXECUTIVE }, { 8.27, 11.69, DMPAPER_A4 }, { 5.83, 8.27, DMPAPER_A5 },
+        { 4.125, 9.5, DMPAPER_ENV_10 },
+    };
+    short id = 0;
+    for (int i = 0; i < (int)(sizeof(std) / sizeof(std[0])); i++)
+        if (fabs(std[i].w - win) < 0.08 && fabs(std[i].h - lin) < 0.08) id = std[i].id;
+    dm->dmFields |= DM_ORIENTATION | DM_PAPERSIZE;
+    dm->dmOrientation = land ? DMORIENT_LANDSCAPE : DMORIENT_PORTRAIT;
+    if (id) { dm->dmPaperSize = id; dm->dmFields &= ~(DM_PAPERWIDTH | DM_PAPERLENGTH); }
+    else {
+        dm->dmPaperSize = DMPAPER_USER;
+        dm->dmFields |= DM_PAPERWIDTH | DM_PAPERLENGTH;
+        dm->dmPaperWidth = (short)(win * 254 + 0.5);     /* tenths of a millimetre */
+        dm->dmPaperLength = (short)(lin * 254 + 0.5);
+    }
+    HDC r = dc ? ResetDCW(dc, dm) : NULL;
+    GlobalUnlock(hdm);
+    return r != NULL;
+}
+
 int print_document(Doc *d)
 {
     doc_layout(d, 0);
@@ -469,6 +504,16 @@ int print_document(Doc *d)
     pd.nMinPage = 1; pd.nMaxPage = (WORD)(g_ptotal > 65000 ? 65000 : g_ptotal);
     pd.nFromPage = 1; pd.nToPage = pd.nMaxPage;
     pd.nCopies = 1;
+    /* start the Print dialog with the document's paper and orientation */
+    {
+        PRINTDLGW def; memset(&def, 0, sizeof(def));
+        def.lStructSize = sizeof(def); def.hwndOwner = g_hwnd; def.Flags = PD_RETURNDEFAULT;
+        if (PrintDlgW(&def) && def.hDevMode) {
+            int a = -1, b = -1, c = -1;
+            for (int p = 1; p <= g_ptotal; p++) if (pi[p].f.pl) { set_paper(NULL, def.hDevMode, &pi[p].f, &a, &b, &c); break; }
+            pd.hDevMode = def.hDevMode; pd.hDevNames = def.hDevNames;
+        }
+    }
     if (!PrintDlgW(&pd)) { ev_flush(); free(pi); return 0; }
     ev_flush();
     HDC dc = pd.hDC;
@@ -480,6 +525,11 @@ int print_document(Doc *d)
     const wchar_t *nm = wcsrchr(d->path, '\\');
     di.lpszDocName = nm ? nm + 1 : (d->path[0] ? d->path : L"ScoopStar document");
     int ok = 1;
+    int cw = 85, cl = 66, cland = 0;     /* the printer's paper as chosen in the Print dialog is used until a page differs */
+    {
+        DEVMODEW *dm = pd.hDevMode ? GlobalLock(pd.hDevMode) : NULL;
+        if (dm) { cw = -1; GlobalUnlock(pd.hDevMode); }    /* always set the first page's paper */
+    }
     if (StartDocW(dc, &di) > 0) {
         fcache_clear();
         for (int pg = from; pg <= to && pg <= g_ptotal; pg++) {
@@ -492,6 +542,11 @@ int print_document(Doc *d)
             Event e; ev_get(&e, 0);
             scr_restore(save); free(save);
             if (e.type == EV_KEY && e.key == K_ESC) { AbortDoc(dc); ok = 0; break; }
+            if (set_paper(dc, pd.hDevMode, &pi[pg].f, &cw, &cl, &cland)) {
+                dpix = GetDeviceCaps(dc, LOGPIXELSX); dpiy = GetDeviceCaps(dc, LOGPIXELSY);
+                offx = GetDeviceCaps(dc, PHYSICALOFFSETX); offy = GetDeviceCaps(dc, PHYSICALOFFSETY);
+                fcache_clear();
+            }
             StartPage(dc);
             render_page(d, pi, dc, pg, dpix, dpiy, -offx, -offy);
             EndPage(dc);
@@ -511,11 +566,12 @@ static Doc *pv_doc; static PageInfo *pv_pi; static int pv_page, pv_zoom, pv_scro
 
 static void draw_one(HDC dc, int page, int px, int py, int pw, int ph)
 {
+    double paperin = (pv_pi[page].f.pw > 0 ? pv_pi[page].f.pw : 85) / 10.0;
     RECT r = { px, py, px + pw, py + ph };
     RECT sh = { px + 5, py + 5, px + pw + 5, py + ph + 5 };
     FillRect(dc, &sh, (HBRUSH)GetStockObject(BLACK_BRUSH));
     FillRect(dc, &r, (HBRUSH)GetStockObject(WHITE_BRUSH));
-    double dpi = pw / 8.5;
+    double dpi = pw / paperin;
     HRGN rg = CreateRectRgn(px, py, px + pw, py + ph);
     SelectClipRgn(dc, rg);
     render_page(pv_doc, pv_pi, dc, page, dpi, dpi, px, py);
@@ -533,14 +589,14 @@ static void pv_paint(HDC hdc, int W, int H)
     FillRect(dc, &all, bg); DeleteObject(bg);
     int bar = H / 22 + 6;
     Fmt *f = &pv_pi[pv_page].f;
-    double pagein = f->pl / 6.0;
+    double pagein = f->pl / 6.0, paperin = (f->pw > 0 ? f->pw : 85) / 10.0;
     int avail_h = H - bar - 20, avail_w = W - 40;
     int pw, ph;
-    if (pv_zoom) { pw = avail_w; ph = (int)(pw * pagein / 8.5); }
+    if (pv_zoom) { pw = avail_w; ph = (int)(pw * pagein / paperin); }
     else {
-        ph = avail_h; pw = (int)(ph * 8.5 / pagein);
+        ph = avail_h; pw = (int)(ph * paperin / pagein);
         int maxw = pv_two ? avail_w / 2 - 10 : avail_w;
-        if (pw > maxw) { pw = maxw; ph = (int)(pw * pagein / 8.5); }
+        if (pw > maxw) { pw = maxw; ph = (int)(pw * pagein / paperin); }
     }
     fcache_clear();
     if (pv_zoom) {

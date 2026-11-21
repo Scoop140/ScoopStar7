@@ -240,7 +240,7 @@ char *rtf_build(Doc *d, Pos *pa, Pos *pb, size_t *outlen)
         for (int i = a.p; i < d->np && para_is_dot(&d->p[i]); i++) { pagefmt = doc_fmt_at(d, i + 1); }
     }
     int twc = 144, twl = 240;     /* twips per column / per line */
-    int paperw = 12240, paperh = pagefmt.pl * twl;
+    int paperw = (pagefmt.pw > 0 ? pagefmt.pw : 85) * twc, paperh = pagefmt.pl * twl;
     int margl = pagefmt.po * twc;
     int textw = pagefmt.rm * twc;
     int margr = paperw - margl - textw; if (margr < 360) margr = 360;
@@ -263,8 +263,8 @@ char *rtf_build(Doc *d, Pos *pa, Pos *pb, size_t *outlen)
         bprintf(&x, "{\\s%d\\sbasedon0\\snext0%s%s %s;}", i, g_pstyles[i].bold ? "\\b" : "", g_pstyles[i].italic ? "\\i" : "", nm);
     }
     bputs(&x, "}\n");
-    bprintf(&x, "\\paperw%d\\paperh%d\\margl%d\\margr%d\\margt%d\\margb%d\\headery%d\\footery%d\\widowctrl\n",
-            paperw, paperh, margl, margr, margt, margb, headery, footery);
+    bprintf(&x, "\\paperw%d\\paperh%d\\margl%d\\margr%d\\margt%d\\margb%d\\headery%d\\footery%d\\widowctrl%s\n",
+            paperw, paperh, margl, margr, margt, margb, headery, footery, pagefmt.land ? "\\landscape" : "");
     if (pn > 0) bprintf(&x, "\\pgnstarts%d\\pgnrestart", pn);
     if (hs.any_eo || fs.any_eo) bputs(&x, "\\facingp");
     bputs(&x, "\\sectd");
@@ -589,7 +589,7 @@ typedef struct {
     int codepage;
     int ucskip;
     uint32_t hash;
-    int paperw, margl, margr, margt, margb, paperh;
+    int paperw, margl, margr, margt, margb, paperh, landscape;
     int fldpage;
     int hadtext;
     wch *nb; int nn, ncap; uint8_t nfx; int innote, nkind;     /* footnote being read */
@@ -979,6 +979,7 @@ int load_rtf_mem(Doc *d, const char *buf, size_t n)
             if (!strcmp(word, "paperw")) { c->paperw = (int)param; continue; }
             if (!strcmp(word, "paperh")) { c->paperh = (int)param; continue; }
             if (!strcmp(word, "margl")) { c->margl = (int)param; continue; }
+            if (!strcmp(word, "landscape")) { c->landscape = 1; continue; }
             if (!strcmp(word, "margr")) { c->margr = (int)param; continue; }
             if (!strcmp(word, "margt")) { c->margt = (int)param; continue; }
             if (!strcmp(word, "margb")) { c->margb = (int)param; continue; }
@@ -1077,6 +1078,25 @@ int load_rtf_mem(Doc *d, const char *buf, size_t n)
             Pos at = { 0, 0 };
             wch b[32]; int k = (int)wcslen(t);
             for (int j = 0; j < k; j++) b[j] = t[j];
+            b[k] = '\n';
+            if (d->np == 0) doc_append_para(d, NULL, 0);
+            doc_insert(d, at, b, k + 1);
+        }
+    }
+    /* paper size and orientation, inserted at the top in the order they apply */
+    {
+        wchar_t lines[3][32]; int nl = 0;
+        int pw = c->paperw > 0 ? c->paperw : 12240, ph = c->paperh > 0 ? c->paperh : 15840;
+        int land = c->landscape || pw > ph;
+        if (land) swprintf(lines[nl++], 32, L".pr or=l");
+        /* after a turn the default paper is 11 x 8.5 */
+        int dw = land ? 15840 : 12240, dh = land ? 12240 : 15840;
+        if (abs(pw - dw) > 30) swprintf(lines[nl++], 32, L".pw %.2f\"", pw / 1440.0);
+        if (abs(ph - dh) > 30) swprintf(lines[nl++], 32, L".pl %.2f\"", ph / 1440.0);
+        for (int i = nl - 1; i >= 0; i--) {
+            Pos at = { 0, 0 };
+            wch b[40]; int k = (int)wcslen(lines[i]);
+            for (int j = 0; j < k; j++) b[j] = lines[i][j];
             b[k] = '\n';
             if (d->np == 0) doc_append_para(d, NULL, 0);
             doc_insert(d, at, b, k + 1);

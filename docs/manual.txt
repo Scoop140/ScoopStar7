@@ -1,4 +1,4 @@
-SCOOPSTAR 7.0
+SCOOPSTAR 7.1
 A WordStar 7.0 for DOS work-alike for Windows 10/11 (Scoop Suite)
 ==================================================================
 
@@ -7,7 +7,8 @@ RUNNING IT
   You can also give it a file:   ScoopStar.exe LETTER.RTF
                                  ScoopStar.exe /N AUTOEXEC.BAT   (nondocument)
   Settings are kept in %APPDATA%\ScoopStar\ScoopStar.ini.
-  Alt+Enter toggles full screen. The screen font is TrueType (Consolas)
+  ScoopStar starts in full screen (Utilities > Screen Settings > Start in
+  full screen turns this off). Alt+Enter toggles full screen. The screen font is TrueType (Consolas)
   by default; Utilities > Screen Settings also offers the VGA bitmap look. Drag the window edges to make it bigger;
   the text grid scales to fit.
 
@@ -53,7 +54,7 @@ WHAT WORKS LIKE WORDSTAR 7
     polytonic, Hebrew, symbols, box drawing, or any hex code).
     ^OD (or Shift+F1, or <*>) shows/hides the tags and the dot command
     lines, as in WordStar 7 (Screen Settings can keep dot commands shown).
-  * Dot commands: .lm .rm .pm .oj .oc .ls .tb .aw .pa .cp .pl .mt .mb .hm
+  * Dot commands: .lm .rm .pm .oj .oc .ls .tb .aw .pa .cp .pl .pw .pr .mt .mb .hm
     .fm .po .he .fo .pn .op .pg .. (see Help > Dot Commands).
   * Layout: ^OL ^OR ^OI ruler, ^OC center, ^O] right align, ^OS alignment
     and spacing, ^OJ justify, ^OY page layout, ^O# page numbering,
@@ -122,6 +123,16 @@ DOCUMENT DEFAULTS
   its own dot commands. Shipped defaults: left margin column 1, right margin
   column 65 (6.5" of text), top margin 1.00", bottom margin 1.33", page
   offset 1.00", single spacing, full justification.
+
+PAPER SIZE AND ORIENTATION
+  .pw 8.5"   paper width (inches by default; c, p or r suffixes also work)
+  .pl 11"    paper length
+  .pr or=l   landscape (swaps width and length); .pr or=p back to portrait
+  Layout > Page (^OY) has a Paper Size list: Letter, Legal, Statement,
+  Executive, A4, A5 and #10 Envelope, plus Portrait and Landscape buttons.
+  Preview draws the real paper. Printing sets the printer to the document's
+  paper size and orientation, and the Print dialog opens already set to
+  match. RTF files keep the paper size and landscape setting.
 
 DIFFERENCES FROM WORDSTAR 7
   * Not included: macros, endnotes, merge printing,

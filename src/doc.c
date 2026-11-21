@@ -285,6 +285,7 @@ void fmt_default(Fmt *f)
     for (int c = 1 + tw; c < 256 && f->ntabs < MAXTABS; c += tw) f->tabs[f->ntabs++] = c;
     f->pn = -1; f->op = 0; f->ww = 1; f->lang = S.lang;
     f->cols = 1; f->gutter = 4; f->hy = 0;
+    f->pw = 85; f->land = 0;
 }
 
 int tab_next(const Fmt *f, int col)
@@ -331,6 +332,22 @@ void dot_parse(const wch *t, int n, wchar_t *cmd, int cmdsz, wchar_t *arg, int a
     arg[k] = 0;
 }
 
+int pw_parse(const wchar_t *s)
+{
+    while (*s == ' ') s++;
+    wchar_t *e;
+    double v = wcstod(s, &e);
+    if (e == s || v <= 0) return 0;
+    while (*e == ' ') e++;
+    wint_t u = towlower(*e);
+    if (u == 'c') v = v / 2.54 * 10;          /* centimetres */
+    else if (u == 'p') v = v / 7.2;           /* points */
+    else if (u == 'r') ;                      /* ruler columns */
+    else v *= 10;                             /* inches */
+    int c = (int)(v + 0.5);
+    return (c >= 20 && c <= 300) ? c : 0;
+}
+
 int ls_parse(const wchar_t *s)
 {
     while (*s == ' ') s++;
@@ -369,6 +386,21 @@ static int apply_dot(Fmt *f, const wch *t, int n, int *cp)
     else if (!wcscmp(cmd, L"oc")) f->align = is_on(arg) ? 'C' : 'L';
     else if (!wcscmp(cmd, L"ls")) { int h = ls_parse(arg); if (h) f->ls = (char)h; }
     else if (!wcscmp(cmd, L"pl") && parse_measure(arg, 0, &v)) { if (v > 10) f->pl = v; }
+    else if (!wcscmp(cmd, L"pw")) { int c = pw_parse(arg); if (c) f->pw = (short)c; }
+    else if (!wcscmp(cmd, L"pr")) {
+        /* .pr or=l / .pr or=p: turning the paper swaps its width and length */
+        const wchar_t *o = wcsstr(arg, L"or=");
+        if (!o) o = wcsstr(arg, L"OR=");
+        if (o) {
+            int l = towlower(o[3]) == 'l';
+            if (l != f->land) {
+                int npw = (f->pl * 10 + 3) / 6, npl = (f->pw * 6 + 5) / 10;
+                if (npw >= 20 && npw <= 300) f->pw = (short)npw;
+                if (npl > 10) f->pl = (short)npl;
+                f->land = (char)l;
+            }
+        }
+    }
     else if (!wcscmp(cmd, L"mt") && parse_measure(arg, 0, &v)) f->mt = v;
     else if (!wcscmp(cmd, L"mb") && parse_measure(arg, 0, &v)) f->mb = v;
     else if (!wcscmp(cmd, L"hm") && parse_measure(arg, 0, &v)) f->hm = v;

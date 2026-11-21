@@ -832,7 +832,7 @@ int screen_settings_dialog(void)
 {
     int tags = S.show_tags, sty = S.show_stylebar, rul = S.show_ruler, sta = S.show_status, scb = S.show_scroll;
     int flg = S.show_flags, cls = S.classic_on_menus, rfx = S.realfx, ins = S.insert, bak = S.backups;
-    int sch = S.scheme, fm = S.fontmode, blk = S.cursorblock, dots = S.dots_always;
+    int sch = S.scheme, fm = S.fontmode, blk = S.cursorblock, dots = S.dots_always, sf = S.startfull;
     wchar_t ttf[40], rows[8], delay[8];
     wcscpy(ttf, S.ttfont); swprintf(rows, 8, L"%d", S.rows);
     swprintf(delay, 8, L"%d", S.menu_delay);
@@ -846,8 +846,8 @@ int screen_settings_dialog(void)
         { DC_CHECK, 8, 3, 34, 1, L"Classic commands on &menus", NULL, 0, &cls },
         { DC_CHECK, 9, 3, 34, 1, L"Show &underline/strikeout", NULL, 0, &rfx },
         { DC_CHECK, 10, 3, 34, 1, L"&Insert mode at start", NULL, 0, &ins },
-        { DC_CHECK, 11, 3, 34, 1, L"Make .BA&K backup files", NULL, 0, &bak },
-        { DC_CHECK, 12, 3, 34, 1, L"Bloc&k cursor in insert mode", NULL, 0, &blk },
+        { DC_CHECK, 11, 3, 34, 1, L"Make .BAK backu&p files", NULL, 0, &bak },
+        { DC_CHECK, 12, 3, 34, 1, L"Block cursor i&n insert mode", NULL, 0, &blk },
         { DC_LABEL, 2, 40, 20, 1, L"Colors:" },
         { DC_RADIO, 3, 42, 22, 1, L"Blue (&WordStar)", NULL, 0, &sch, 0 },
         { DC_RADIO, 4, 42, 22, 1, L"Blac&k background", NULL, 0, &sch, 1 },
@@ -861,6 +861,7 @@ int screen_settings_dialog(void)
         { DC_EDIT, 12, 44, 18, 1, L"", ttf, 40, NULL, 0, NULL, 0, 0, 0, 0 },
         { DC_EDIT, 14, 3, 4, 1, L"Screen ro&ws (25-60):", rows, 8, NULL, 0, NULL, 0, 0, 0, 24 },
         { DC_CHECK, 15, 3, 36, 1, L"Dot commands shown with tags &off", NULL, 0, &dots },
+        { DC_CHECK, 16, 3, 36, 1, L"Start in full &screen", NULL, 0, &sf },
         { DC_EDIT, 17, 3, 6, 1, L"Menu delay (ms):", delay, 8, NULL, 0, NULL, 0, 0, 0, 24 },
         { DC_BUTTON, 14, 48, 10, 1, L"OK", NULL, 0, NULL, 0, NULL, 0, 0, 1 },
         { DC_BUTTON, 16, 48, 10, 1, L"Cancel", NULL, 0, NULL, 0, NULL, 0, 0, 2 },
@@ -870,7 +871,7 @@ int screen_settings_dialog(void)
     S.show_flags = flg; S.classic_on_menus = cls; S.realfx = rfx; S.insert = ins; S.backups = bak; S.cursorblock = blk;
     S.scheme = sch; S.fontmode = fm; wcscpy(S.ttfont, ttf[0] ? ttf : L"Consolas");
     int rr = _wtoi(rows); if (rr < 25) rr = 25; if (rr > MAXR) rr = MAXR; S.rows = rr;
-    S.dots_always = dots;
+    S.dots_always = dots; S.startfull = sf;
     int dl = _wtoi(delay); if (dl >= 0 && dl < 10000) S.menu_delay = dl;
     set_scheme(S.scheme);
     apply_rows(S.rows);
@@ -1087,6 +1088,8 @@ L"  .aw off   word wrap off (lines kept as typed)   .aw on\n"
 L"  .pa       page break\n"
 L"  .cp n     conditional page break (keep n lines together)\n"
 L"  .pl n     page length in lines (6 per inch) or inches: .pl 11\"\n"
+L"  .pw n     paper width in inches: .pw 5.5 (Statement); 8.5 if not set\n"
+L"  .pr or=l   landscape (turns the paper)     .pr or=p  portrait\n"
 L"  .mt n     top margin          .mb n   bottom margin\n"
 L"  .hm n     header margin       .fm n   footer margin\n"
 L"  .po n     page offset (left edge), columns or inches\n"
@@ -1114,7 +1117,7 @@ L"Unless a footer is set or .op is used, page numbers print at the\n"
 L"bottom center of each page, as in WordStar.\n";
 
 static const wchar_t *help_edit =
-L"SCOOPSTAR 7.0 HELP\n"
+L"SCOOPSTAR 7.1 HELP\n"
 L"\n"
 L"ScoopStar works like WordStar 7.0 for DOS. You can use the classic\n"
 L"control-key commands or the pull-down menus (Alt + the highlighted letter,\n"
@@ -1207,7 +1210,7 @@ void show_help(const wchar_t *topic)
 void about_box(void)
 {
     msgbox(L"About ScoopStar",
-           L"ScoopStar 7.0\n"
+           L"ScoopStar 7.1\n"
            L"A WordStar 7.0 work-alike for Windows\n"
            L"\n"
            L"Part of the Scoop Suite.\n"
@@ -1358,7 +1361,7 @@ void status_dialog(void)
     GetCurrentDirectoryW(MAX_PATH, cd);
     ULARGE_INTEGER fb; GetDiskFreeSpaceExW(NULL, &fb, NULL, NULL);
     MEMORYSTATUSEX ms = { sizeof(ms) }; GlobalMemoryStatusEx(&ms);
-    swprintf(m, 600, L"ScoopStar 7.0\n\nCurrent directory: %ls\nDisk space free:   %llu KB\nMemory free:       %llu KB\nFiles displayed:   %ls",
+    swprintf(m, 600, L"ScoopStar 7.1\n\nCurrent directory: %ls\nDisk space free:   %llu KB\nMemory free:       %llu KB\nFiles displayed:   %ls",
              cd, (unsigned long long)(fb.QuadPart / 1024), (unsigned long long)(ms.ullAvailPhys / 1024), S.filespec);
     msgbox(L"Status", m, L"OK");
 }
@@ -1424,7 +1427,7 @@ void opening_screen(void)
         };
         int hr = 3;
         (void)banner;
-        scr_bigtext(hr, 10, 3, SC - 20, L"ScoopStar 7.0", (COL[C_OPENBG] & 0xF0) | 0x0E);
+        scr_bigtext(hr, 10, 3, SC - 20, L"ScoopStar 7.1", (COL[C_OPENBG] & 0xF0) | 0x0E);
         scr_puts(hr + 4, (SC - 52) / 2, L"A WordStar 7.0 work-alike for Windows - Scoop Suite", COL[C_OPENHELP]);
         scr_puts(hr + 6, 4, L"D open a document   S new document   N open a nondocument   P print", COL[C_OPENHELP]);
         scr_puts(hr + 7, 4, L"L change directory  F files displayed  O copy  Y delete  E rename  X exit", COL[C_OPENHELP]);

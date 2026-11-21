@@ -19,7 +19,7 @@
 #include <wchar.h>
 
 #define APPNAME   L"ScoopStar"
-#define APPVER    L"7.0"
+#define APPVER    L"7.1"
 
 typedef uint32_t wch;               /* one document character (Unicode code point or tag) */
 
@@ -154,7 +154,8 @@ typedef struct {
     int lang;               /* default spelling language */
     int skipcaps;           /* spelling: ignore words in CAPITALS */
     int def_mt, def_mb, def_po, def_ls; char def_align;
-    int helplevel;          /* 0-4 */  /* new-document page defaults */
+    int helplevel;
+    int startfull;      /* open in full screen */          /* 0-4 */  /* new-document page defaults */
     wchar_t dir[MAX_PATH];
     wchar_t filespec[64];
     int winx, winy, winw, winh, maximized;
@@ -210,6 +211,8 @@ typedef struct {
     int lang;               /* spelling language (.la) */
     int cols, gutter;       /* newspaper columns (.co) */
     int hy;                 /* automatic hyphenation (.hy) */
+    short pw;               /* paper width in columns (tenths of an inch), .pw */
+    char land;              /* landscape (.pr or=l) */
 } Fmt;
 
 enum { NOTE_FOOT, NOTE_END, NOTE_ANNOT };
@@ -284,6 +287,7 @@ Fmt  doc_fmt_at(Doc *d, int pi);
 void fmt_default(Fmt *f);
 int  parse_measure(const wchar_t *s, int horiz, int *out);
 int  tab_next(const Fmt *f, int col);    /* 1-based col -> next tab stop col */
+int  pw_parse(const wchar_t *s);               /* paper width: inches unless c, p or r follows; 0 if invalid */
 int  ls_parse(const wchar_t *s);               /* "1.5" -> 3 half lines; 0 if invalid */
 void ls_text(int halves, wchar_t *out);         /* 3 -> "1.5" */
 void dot_parse(const wch *t, int n, wchar_t *cmd, int cmdsz, wchar_t *arg, int argsz);

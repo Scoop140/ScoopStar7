@@ -1202,27 +1202,96 @@ static void fmt_inches(int v, int perinch, wchar_t *out)
     swprintf(out, 16, L"%.2f\"", v / (double)perinch);
 }
 
+static const struct { const wchar_t *name; double w, h; } g_papers[] = {
+    { L"Letter        8.5 x 11 in", 8.5, 11 },
+    { L"Legal         8.5 x 14 in", 8.5, 14 },
+    { L"Statement     5.5 x 8.5 in", 5.5, 8.5 },
+    { L"Executive     7.25 x 10.5 in", 7.25, 10.5 },
+    { L"A4            210 x 297 mm", 8.27, 11.69 },
+    { L"A5            148 x 210 mm", 5.83, 8.27 },
+    { L"#10 Envelope  4.125 x 9.5 in", 4.125, 9.5 },
+};
+#define NPAPERS (int)(sizeof(g_papers) / sizeof(g_papers[0]))
+
 static void page_dialog(EdWin *w)
 {
     Doc *d = w->doc;
-    Fmt f = doc_fmt_at(d, w->cur.p);
-    wchar_t pl[16], mt[16], mb[16], hm[16], fm[16], po[16];
+    /* settings in force at the cursor, counting dot commands the cursor sits on */
+    int fp = w->cur.p;
+    while (fp < d->np - 1 && para_is_dot(&d->p[fp])) fp++;
+    Fmt f = doc_fmt_at(d, fp);
+    wchar_t pw[16], pl[16], mt[16], mb[16], hm[16], fm[16], po[16];
+    fmt_inches(f.pw, 10, pw);
     fmt_inches(f.pl, 6, pl); fmt_inches(f.mt, 6, mt); fmt_inches(f.mb, 6, mb);
     fmt_inches(f.hm, 6, hm); fmt_inches(f.fm, 6, fm); fmt_inches(f.po, 10, po);
-    DCtl c[] = {
-        { DC_EDIT, 2, 3, 9, 1, L"Page &length:", pl, 16, NULL, 0, NULL, 0, 0, 0, 24 },
-        { DC_EDIT, 3, 3, 9, 1, L"&Top margin:", mt, 16, NULL, 0, NULL, 0, 0, 0, 24 },
-        { DC_EDIT, 4, 3, 9, 1, L"&Bottom margin:", mb, 16, NULL, 0, NULL, 0, 0, 0, 24 },
-        { DC_EDIT, 5, 3, 9, 1, L"&Header margin:", hm, 16, NULL, 0, NULL, 0, 0, 0, 24 },
-        { DC_EDIT, 6, 3, 9, 1, L"&Footer margin:", fm, 16, NULL, 0, NULL, 0, 0, 0, 24 },
-        { DC_EDIT, 7, 3, 9, 1, L"Page &offset (left):", po, 16, NULL, 0, NULL, 0, 0, 0, 24 },
-        { DC_LABEL, 9, 3, 50, 1, L"Measurements are in inches." },
-        { DC_BUTTON, 2, 42, 10, 1, L"OK", NULL, 0, NULL, 0, NULL, 0, 0, 1 },
-        { DC_BUTTON, 4, 42, 10, 1, L"Cancel", NULL, 0, NULL, 0, NULL, 0, 0, 2 },
-    };
-    if (dialog_run(L"Page Layout", 5, 10, 12, 58, c, 9, 0) != 1) return;
+    wchar_t pw0[16], pl0[16]; wcscpy(pw0, pw); wcscpy(pl0, pl);
+    int land = f.land;
+    for (;;) {
+        DCtl c[] = {
+            { DC_EDIT, 2, 3, 9, 1, L"Paper &width:", pw, 16, NULL, 0, NULL, 0, 0, 0, 24 },
+            { DC_EDIT, 3, 3, 9, 1, L"Page &length:", pl, 16, NULL, 0, NULL, 0, 0, 0, 24 },
+            { DC_RADIO, 4, 5, 12, 1, L"Po&rtrait", NULL, 0, &land, 0 },
+            { DC_RADIO, 4, 20, 13, 1, L"L&andscape", NULL, 0, &land, 1 },
+            { DC_EDIT, 6, 3, 9, 1, L"&Top margin:", mt, 16, NULL, 0, NULL, 0, 0, 0, 24 },
+            { DC_EDIT, 7, 3, 9, 1, L"&Bottom margin:", mb, 16, NULL, 0, NULL, 0, 0, 0, 24 },
+            { DC_EDIT, 8, 3, 9, 1, L"&Header margin:", hm, 16, NULL, 0, NULL, 0, 0, 0, 24 },
+            { DC_EDIT, 9, 3, 9, 1, L"&Footer margin:", fm, 16, NULL, 0, NULL, 0, 0, 0, 24 },
+            { DC_EDIT, 10, 3, 9, 1, L"Page &offset (left):", po, 16, NULL, 0, NULL, 0, 0, 0, 24 },
+            { DC_LABEL, 12, 3, 52, 1, L"Measurements are in inches. Set the right margin" },
+            { DC_LABEL, 13, 3, 52, 1, L"(^OR) to fit the paper width." },
+            { DC_BUTTON, 2, 42, 12, 1, L"OK", NULL, 0, NULL, 0, NULL, 0, 0, 1 },
+            { DC_BUTTON, 4, 42, 12, 1, L"Cancel", NULL, 0, NULL, 0, NULL, 0, 0, 2 },
+            { DC_BUTTON, 6, 42, 12, 1, L"&Paper Size", NULL, 0, NULL, 0, NULL, 0, 0, 3 },
+        };
+        int r = dialog_run(L"Page Layout", 3, 10, 16, 58, c, sizeof(c) / sizeof(c[0]), 0);
+        if (r == 3) {
+            const wchar_t *items[NPAPERS];
+            for (int i = 0; i < NPAPERS; i++) items[i] = g_papers[i].name;
+            int k = list_pick(L"Paper Size", items, NPAPERS, 0, 34);
+            if (k >= 0) {
+                double a = g_papers[k].w, b2 = g_papers[k].h;
+                if (land) { double t = a; a = b2; b2 = t; }
+                swprintf(pw, 16, L"%.2f\"", a); swprintf(pl, 16, L"%.2f\"", b2);
+            }
+            continue;
+        }
+        if (r != 1) return;
+        break;
+    }
     int v;
-    if (parse_measure(pl, 0, &v) && v != f.pl) set_dot(w, L"pl", pl);
+    int sized = wcscmp(pw, pw0) || wcscmp(pl, pl0);
+    if (sized || land != f.land) {
+        /* the paper the user ends up with: the fields, or the old paper turned */
+        int tw = pw_parse(pw), tl = 0;
+        if (!parse_measure(pl, 0, &tl)) tl = f.pl;
+        if (!tw) tw = f.pw;
+        if (!sized) { tw = (f.pl * 10 + 3) / 6; tl = (f.pw * 6 + 5) / 10; }
+        /* rewrite the paper commands above the cursor in the order they apply */
+        Doc *dd = w->doc;
+        undo_push(dd, w->cur, 0);
+        for (int pi = w->cur.p - 1; pi >= 0 && para_is_dot(&dd->p[pi]); pi--) {
+            wchar_t c8[8], a8[64];
+            dot_parse(dd->p[pi].t, dd->p[pi].n, c8, 8, a8, 64);
+            if (!wcscmp(c8, L"pr") || !wcscmp(c8, L"pw") || !wcscmp(c8, L"pl")) {
+                para_del(dd, pi, 0, dd->p[pi].n);
+                doc_join(dd, pi);                 /* remove the emptied line */
+            }
+        }
+        for (int pi = w->cur.p; pi < dd->np - 1 && para_is_dot(&dd->p[pi]); ) {
+            wchar_t c8[8], a8[64];
+            dot_parse(dd->p[pi].t, dd->p[pi].n, c8, 8, a8, 64);
+            if (!wcscmp(c8, L"pr") || !wcscmp(c8, L"pw") || !wcscmp(c8, L"pl")) {
+                para_del(dd, pi, 0, dd->p[pi].n);
+                doc_join(dd, pi);
+            } else pi++;
+        }
+        doc_touch(dd);
+        Fmt g = doc_fmt_at(dd, w->cur.p);
+        if (land != g.land) { insert_dot_line(w, land ? L".pr or=l" : L".pr or=p"); g = doc_fmt_at(dd, w->cur.p); }
+        wchar_t t[32];
+        if (tw != g.pw) { swprintf(t, 32, L".pw %.2f\"", tw / 10.0); insert_dot_line(w, t); }
+        if (tl != g.pl) { swprintf(t, 32, L".pl %.2f\"", tl / 6.0); insert_dot_line(w, t); }
+    }
     if (parse_measure(mt, 0, &v) && v != f.mt) set_dot(w, L"mt", mt);
     if (parse_measure(mb, 0, &v) && v != f.mb) set_dot(w, L"mb", mb);
     if (parse_measure(hm, 0, &v) && v != f.hm) set_dot(w, L"hm", hm);
