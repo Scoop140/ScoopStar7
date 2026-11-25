@@ -626,9 +626,70 @@ void *xrealloc(void *p, size_t n) { p = realloc(p, n ? n : 1); if (!p) { Message
 wchar_t *wcsdup_(const wchar_t *s) { size_t n = wcslen(s) + 1; wchar_t *d = xmalloc(n * sizeof(wchar_t)); memcpy(d, s, n * sizeof(wchar_t)); return d; }
 
 /* ------------------------------------------------------------------ main */
+/* ------------------------------------------------------------------ crash report */
+/* If ScoopStar crashes, write %APPDATA%\ScoopStar\crash.txt (what failed and where,
+   for fixing the bug) and save every changed document beside the original as
+   "<name> (recovered).rtf", then tell the user. */
+static LONG WINAPI crash_filter(EXCEPTION_POINTERS *ep)
+{
+    static volatile LONG busy;
+    if (InterlockedExchange(&busy, 1)) return EXCEPTION_EXECUTE_HANDLER;
+    HMODULE mod = GetModuleHandleW(NULL);
+    uintptr_t base = (uintptr_t)mod, size = 0;
+    IMAGE_DOS_HEADER *dos = (IMAGE_DOS_HEADER *)mod;
+    IMAGE_NT_HEADERS *nt = (IMAGE_NT_HEADERS *)((char *)mod + dos->e_lfanew);
+    size = nt->OptionalHeader.SizeOfImage;
+    wchar_t dir[MAX_PATH], log[MAX_PATH];
+    if (!GetEnvironmentVariableW(L"APPDATA", dir, MAX_PATH)) wcscpy(dir, L".");
+    wcscat(dir, L"\\ScoopStar"); CreateDirectoryW(dir, NULL);
+    swprintf(log, MAX_PATH, L"%ls\\crash.txt", dir);
+    FILE *f = _wfopen(log, L"a");
+    EXCEPTION_RECORD *er = ep->ExceptionRecord;
+    CONTEXT *cx = ep->ContextRecord;
+    if (f) {
+        SYSTEMTIME t; GetLocalTime(&t);
+        fprintf(f, "ScoopStar %ls crash %04d-%02d-%02d %02d:%02d:%02d\n", APPVER, t.wYear, t.wMonth, t.wDay, t.wHour, t.wMinute, t.wSecond);
+        fprintf(f, "code %08lX at +%llX", (unsigned long)er->ExceptionCode, (unsigned long long)((uintptr_t)er->ExceptionAddress - base));
+        if (er->ExceptionCode == EXCEPTION_ACCESS_VIOLATION && er->NumberParameters >= 2)
+            fprintf(f, " (%s %llX)", er->ExceptionInformation[0] ? "write" : "read", (unsigned long long)er->ExceptionInformation[1]);
+        fprintf(f, "\nstack:");
+        /* return addresses into ScoopStar found on the stack, nearest first */
+        uintptr_t *sp = (uintptr_t *)cx->Rsp;
+        MEMORY_BASIC_INFORMATION mbi;
+        uintptr_t top = (uintptr_t)sp + 64 * 1024;
+        if (VirtualQuery(sp, &mbi, sizeof mbi)) { uintptr_t end = (uintptr_t)mbi.BaseAddress + mbi.RegionSize; if (end < top) top = end; }
+        int n = 0;
+        for (uintptr_t *q = sp; (uintptr_t)(q + 1) <= top && n < 48; q++)
+            if (*q > base + 0x1000 && *q < base + size) { fprintf(f, " %llX", (unsigned long long)(*q - base)); n++; }
+        fprintf(f, "\n\n");
+        fclose(f);
+    }
+    /* rescue changed documents */
+    wchar_t saved[1024] = L"";
+    for (int i = 0; i < g_nwin && i < 2; i++) {
+        Doc *d = g_win[i].doc;
+        if (!d || !d->dirty || (i == 1 && d == g_win[0].doc)) continue;
+        wchar_t out[MAX_PATH + 32];
+        if (d->path[0]) {
+            wcsncpy(out, d->path, MAX_PATH); out[MAX_PATH - 1] = 0;
+            wchar_t *dot = wcsrchr(out, '.'), *sl = wcsrchr(out, '\\');
+            if (dot && (!sl || dot > sl)) *dot = 0;
+            wcscat(out, L" (recovered).rtf");
+        } else swprintf(out, MAX_PATH + 32, L"%ls\\Untitled (recovered).rtf", dir);
+        int ok = d->nondoc ? save_text(d, out, NULL, NULL) : save_rtf(d, out, NULL, NULL);
+        if (ok && wcslen(saved) + wcslen(out) < 1000) { wcscat(saved, L"\n  "); wcscat(saved, out); }
+    }
+    wchar_t m[1400];
+    swprintf(m, 1400, L"ScoopStar has stopped because of an error.\n\n%ls%ls\n\nA report was written to:\n  %ls\nPlease send it so the error can be fixed.",
+             saved[0] ? L"Your unsaved work was saved as:" : L"No documents had unsaved changes.", saved, log);
+    MessageBoxW(NULL, m, L"ScoopStar", MB_OK | MB_ICONERROR | MB_TOPMOST);
+    return EXCEPTION_EXECUTE_HANDLER;
+}
+
 int WINAPI wWinMain(HINSTANCE hi, HINSTANCE hp, PWSTR cmd, int show)
 {
     (void)hp; (void)cmd;
+    SetUnhandledExceptionFilter(crash_filter);
     /* Per-monitor DPI awareness so the text grid is crisp on Windows 10/11 */
     HMODULE u32 = GetModuleHandleW(L"user32.dll");
     typedef BOOL (WINAPI *SetCtx)(HANDLE);
@@ -672,7 +733,7 @@ int WINAPI wWinMain(HINSTANCE hi, HINSTANCE hp, PWSTR cmd, int show)
     int ww = r.right - r.left, wh = r.bottom - r.top;
     int wx = CW_USEDEFAULT, wy = CW_USEDEFAULT;
     if (S.winw > 300 && S.winh > 200) { ww = S.winw; wh = S.winh; wx = S.winx; wy = S.winy; }
-    g_hwnd = CreateWindowW(L"ScoopStar7", L"ScoopStar 7.1.1", WS_OVERLAPPEDWINDOW, wx, wy, ww, wh, NULL, NULL, hi, NULL);
+    g_hwnd = CreateWindowW(L"ScoopStar7", L"ScoopStar 7.1.2", WS_OVERLAPPEDWINDOW, wx, wy, ww, wh, NULL, NULL, hi, NULL);
     ShowWindow(g_hwnd, S.maximized ? SW_SHOWMAXIMIZED : show);
     if (S.startfull) toggle_fullscreen();
     UpdateWindow(g_hwnd);

@@ -1,4 +1,4 @@
-SCOOPSTAR 7.1.1
+SCOOPSTAR 7.1.2
 A WordStar 7.0 for DOS work-alike for Windows 10/11 (Scoop Suite)
 ==================================================================
 

@@ -1,4 +1,4 @@
-# ScoopStar 7.1.1
+# ScoopStar 7.1.2
 
 A WordStar 7.0 for DOS work-alike for Windows 11, written in C.
 
@@ -42,6 +42,14 @@ features, and tested each version.
 - Starts in full screen (can be turned off in Screen Settings)
 - Protect and unprotect files, make directories, and file lists in natural
   order (chapter2 before chapter10)
+
+## What's new in 7.1.2
+
+- Fixed a crash in spell check on misspelled words with ten or more
+  suggestions.
+- The status line shows ColBlock while column block mode (^KN) is on.
+- If ScoopStar ever crashes, it saves your changed documents as
+  "name (recovered).rtf" and writes a report to %APPDATA%\ScoopStar\crash.txt.
 
 ## What's new in 7.1.1
 

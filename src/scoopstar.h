@@ -19,7 +19,7 @@
 #include <wchar.h>
 
 #define APPNAME   L"ScoopStar"
-#define APPVER    L"7.1.1"
+#define APPVER    L"7.1.2"
 
 typedef uint32_t wch;               /* one document character (Unicode code point or tag) */
 

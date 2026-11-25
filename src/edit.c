@@ -444,13 +444,15 @@ static void draw_status(void)
     
     Line *l = cur_line(w);
     int col = line_col_of(d, l, w->cur.o) + 1;
-    wchar_t s[128];
-    if (d->nondoc) swprintf(s, 128, L"%-6ls  FC%d  L%d  C%d", g_insert ? L"Insert" : L"", w->cur.o + 1, w->cur.p + 1, col);
+    wchar_t s[160];
+    /* column block mode is shown, so a block that marks only a rectangle is not a surprise */
+    const wchar_t *cm = g_colblock ? (g_colrepl ? L"ColBlock ColRepl  " : L"ColBlock  ") : L"";
+    if (d->nondoc) swprintf(s, 160, L"%ls%-6ls  FC%d  L%d  C%d", cm, g_insert ? L"Insert" : L"", w->cur.o + 1, w->cur.p + 1, col);
     else {
         Fmt f = d->base;
         int pg = l->page + (f.pn > 0 ? f.pn - 1 : 0);
         double v = (f.mt + l->y2 / 2.0) / 6.0, hh = (col - 1) / 10.0;
-        swprintf(s, 128, L"%-6ls  P%d  L%d  V%.2f\"  C%d  H%.2f\"", g_insert ? L"Insert" : L"", pg, l->pline, v, col, hh);
+        swprintf(s, 160, L"%ls%-6ls  P%d  L%d  V%.2f\"  C%d  H%.2f\"", cm, g_insert ? L"Insert" : L"", pg, l->pline, v, col, hh);
     }
     int n = (int)wcslen(s);
     int c0 = SC - n - 4;
@@ -1551,7 +1553,8 @@ static int spell_dialog(const wchar_t *word, int lang, wchar_t *rep)
         scr_puts(r + 2, 2, ns ? L"Suggestions:" : L"No suggestions.", COL[C_DLG]);
         for (int i = 0; i < ns && i < cols * srows; i++) {
             int rr = r + 3 + i / cols, cc = 3 + (i % cols) * colw;
-            wchar_t it[80]; swprintf(it, 80, i < 9 ? L"%d %ls" : L"  %ls", i + 1, sug[i]);
+            wchar_t it[80];
+            if (i < 9) swprintf(it, 80, L"%d %ls", i + 1, sug[i]); else swprintf(it, 80, L"  %ls", sug[i]);
             uint8_t at = (i == sel && focus == 0) ? COL[C_DLGFOCUS] : COL[C_DLG];
             scr_fill(rr, cc, colw - 1, ' ', at);
             scr_putsn(rr, cc, it, colw - 2, at);

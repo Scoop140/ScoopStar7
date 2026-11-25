@@ -1117,7 +1117,7 @@ L"Unless a footer is set or .op is used, page numbers print at the\n"
 L"bottom center of each page, as in WordStar.\n";
 
 static const wchar_t *help_edit =
-L"SCOOPSTAR 7.1.1 HELP\n"
+L"SCOOPSTAR 7.1.2 HELP\n"
 L"\n"
 L"ScoopStar works like WordStar 7.0 for DOS. You can use the classic\n"
 L"control-key commands or the pull-down menus (Alt + the highlighted letter,\n"
@@ -1210,7 +1210,7 @@ void show_help(const wchar_t *topic)
 void about_box(void)
 {
     msgbox(L"About ScoopStar",
-           L"ScoopStar 7.1.1\n"
+           L"ScoopStar 7.1.2\n"
            L"A WordStar 7.0 work-alike for Windows\n"
            L"\n"
            L"Part of the Scoop Suite.\n"
@@ -1361,7 +1361,7 @@ void status_dialog(void)
     GetCurrentDirectoryW(MAX_PATH, cd);
     ULARGE_INTEGER fb; GetDiskFreeSpaceExW(NULL, &fb, NULL, NULL);
     MEMORYSTATUSEX ms = { sizeof(ms) }; GlobalMemoryStatusEx(&ms);
-    swprintf(m, 600, L"ScoopStar 7.1.1\n\nCurrent directory: %ls\nDisk space free:   %llu KB\nMemory free:       %llu KB\nFiles displayed:   %ls",
+    swprintf(m, 600, L"ScoopStar 7.1.2\n\nCurrent directory: %ls\nDisk space free:   %llu KB\nMemory free:       %llu KB\nFiles displayed:   %ls",
              cd, (unsigned long long)(fb.QuadPart / 1024), (unsigned long long)(ms.ullAvailPhys / 1024), S.filespec);
     msgbox(L"Status", m, L"OK");
 }
@@ -1427,7 +1427,7 @@ void opening_screen(void)
         };
         int hr = 3;
         (void)banner;
-        scr_bigtext(hr, 10, 3, SC - 20, L"ScoopStar 7.1.1", (COL[C_OPENBG] & 0xF0) | 0x0E);
+        scr_bigtext(hr, 10, 3, SC - 20, L"ScoopStar 7.1.2", (COL[C_OPENBG] & 0xF0) | 0x0E);
         scr_puts(hr + 4, (SC - 52) / 2, L"A WordStar 7.0 work-alike for Windows - Scoop Suite", COL[C_OPENHELP]);
         scr_puts(hr + 6, 4, L"D open a document   S new document   N open a nondocument   P print", COL[C_OPENHELP]);
         scr_puts(hr + 7, 4, L"L change directory  F files displayed  O copy  Y delete  E rename  X exit", COL[C_OPENHELP]);
